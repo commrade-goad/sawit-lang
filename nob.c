@@ -26,6 +26,10 @@ int main(int argc, char **argv) {
         shift(argv, argc);
         if (strcmp(argv[0], "-run") == 0) {
             cmd_append(&cmd, "./"PROG_NAME);
+            shift(argv, argc);
+            for (int i = 0; i < argc; i++) {
+                cmd_append(&cmd, argv[i]);
+            }
             cmd_run(&cmd);
         }
     }
