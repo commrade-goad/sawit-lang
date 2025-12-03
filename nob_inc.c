@@ -1,0 +1,5 @@
+#define NOB_STRIP_PREFIX
+#define NOB_IMPLEMENTATION
+#include "nob.h"
+#undef NOB_IMPLEMENTATION
+#undef NOB_STRIP_PREFIX

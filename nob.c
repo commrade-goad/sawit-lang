@@ -17,6 +17,8 @@ int main(int argc, char **argv) {
     cmd_append(&cmd, "cc");
     cflags(&cmd);
     cmd_append(&cmd, "-o", PROG_NAME);
+    cmd_append(&cmd, "nob_inc.c");
+    cmd_append(&cmd, "token.c");
     cmd_append(&cmd, "main.c");
 
     cmd_run(&cmd);
