@@ -1,5 +1,5 @@
 // this is a comment
-let main () {
+let main = () {
     let a = 10;
     print(a);
 }

@@ -6,20 +6,52 @@
 #define NOB_STRIP_PREFIX
 #include "nob.h"
 
+#define LET_STR "let"
+#define COMMENT_CHR2 '/'
+#define COMMENT_CHR '#'
+#define OCPARENT_CHR '{'
+#define CCPARENT_CHR '}'
+#define CLOSING_CHR ';'
+#define EQUAL_CHR '='
+#define COLON_CHR ':'
+
 typedef enum {
-    T_OPARENT = 0,
+    T_EOF = 0,
+
+    T_OPARENT,
     T_CPARENT,
-    T_OCPARENT,
-    T_CCPARENT,
+    T_OCPARENT, // {
+    T_CCPARENT, // }
+    T_OSPARENT, // [
+    T_CSPARENT, // ]
+
+    T_CLOSING,  // ;
     T_EQUAL,
-    T_SEMICOLON,
-    T_EOF,
-    T_LIT,
+    T_FATARROW, // =>
+    T_ARROW,    // ->
+    T_COLON,    // :
+    T_BINOP,
+
+    T_LET,
+    T_CONST,
+    T_RETURN,
+    T_IF,
+    T_ELSE,
+    T_STRUCT,
+    T_ENUM,
+
+    T_IDENT,
+    T_CHR,
+    T_STR,
+    T_NUM,
+
+    T_ERR,
 } TokenKind;
 
 typedef struct {
     TokenKind tk;
     union {
+        char     Char;
         int32_t  Int32;
         int64_t  Int64;
         char    *String;

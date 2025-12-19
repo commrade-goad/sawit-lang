@@ -1,3 +1,7 @@
+#define ARENA_IMPLEMENTATION
+#include "arena.h"
+#undef ARENA_IMPLEMENTATION
+
 #include "utils.h"
 #include "token.h"
 
@@ -15,5 +19,13 @@ int main(int argc, char **argv) {
 
     Tokens tokens = {0};
     parse_tokens(&sb, &tokens);
+    for (size_t i = 0; i < tokens.count; i++) {
+        if (tokens.items[i].tk == T_NUM || tokens.items[i].tk == T_IDENT) {
+            printf("Token kind: %d -> %s\n", tokens.items[i].tk, tokens.items[i].data.String);
+        }
+        else {
+            printf("Token kind: %d\n", tokens.items[i].tk);
+        }
+    }
     return 0;
 }
