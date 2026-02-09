@@ -73,5 +73,6 @@ typedef struct {
 } InternalCursor;
 
 bool parse_tokens(Nob_String_Builder *data, Tokens *toks);
+bool parse_tokens_v2(Nob_String_Builder *data, Tokens *t);
 
 #endif

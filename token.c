@@ -86,13 +86,151 @@ char *next_until_nl(InternalCursor *cur) {
 }
 
 char *flush_buffer(String_Builder *sb) {
-    if (sb->count > 0) {
-        sb->count = 0;
-        return strdup(sb->items);
-    }
-    return NULL;
+    if (sb->count == 0) return NULL;
+
+    char saved = sb->items[sb->count];
+    sb->items[sb->count] = '\0';
+
+    char *out = strdup(sb->items);
+
+    sb->items[sb->count] = saved;
+    sb->count = 0;
+
+    return out;
 }
 
+// TODO: Dont forget to finish this, right now i am too lazy to continue this
+bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
+    InternalCursor cur = {
+        .cursor = data->items,
+        .offset = 0,
+        .line = 1,
+        .col = 1,
+        .data = data,
+    };
+
+    String_Builder sb = {0};
+
+    while (cur.offset < data->count) {
+        size_t line = cur.line;
+        size_t col  = cur.col;
+
+        char *p = next(&cur);
+        if (!p) break;
+        char ch = *p;
+
+        /* ================= COMMENTS ================= */
+
+        /* // comment */
+        if (ch == COMMENT_CHR2 && peek_expect(&cur, 0, COMMENT_CHR2)) {
+            next(&cur);
+            next_until_nl(&cur);
+            continue;
+        }
+
+        /* # comment */
+        if (ch == COMMENT_CHR) {
+            next_until_nl(&cur);
+            continue;
+        }
+
+        /* ================= WHITESPACE ================= */
+
+        if (isspace(ch)) {
+            if (sb.count > 0) {
+                Token t = {
+                    .tk   = T_IDENT,
+                    .line = line,
+                    .col  = col - sb.count,
+                };
+                t.data.String = flush_buffer(&sb);
+                da_append(tokens, t);
+            }
+            continue;
+        }
+
+        /* ================= SINGLE-CHAR TOKENS ================= */
+
+        switch (ch) {
+        case CLOSING_CHR: {
+            if (sb.count > 0) {
+                Token t = {
+                    .tk   = T_IDENT,
+                    .line = line,
+                    .col  = col - sb.count,
+                };
+                t.data.String = flush_buffer(&sb);
+                da_append(tokens, t);
+            }
+
+            Token t = {
+                .tk   = T_CLOSING,
+                .line = line,
+                .col  = col,
+            };
+            da_append(tokens, t);
+            continue;
+        } break;
+        case EQUAL_CHR: {
+            Token t = {
+                .tk   = T_EQUAL,
+                .line = line,
+                .col  = col,
+            };
+            da_append(tokens, t);
+            continue;
+        } break;
+        case OCPARENT_CHR: {
+            Token t = {
+                .tk = T_OCPARENT,
+                .line = line,
+                .col  = col,
+            };
+            da_append(tokens, t);
+            continue;
+        } break;
+        case CCPARENT_CHR: {
+            Token t = {
+                .tk = T_CCPARENT,
+                .line = line,
+                .col  = col,
+            };
+            da_append(tokens, t);
+            continue;
+        } break;
+        case COLON_CHR: {
+            Token t = {
+                .tk = T_COLON,
+                .line = line,
+                .col  = col,
+            };
+            da_append(tokens, t);
+            continue;
+        } break;
+        default: {} break;
+        }
+
+        /* ================= IDENT / NUMBER ================= */
+
+        sb_appendf(&sb, "%c", ch);
+    }
+
+    if (sb.count > 0 && !isspace(sb.items[sb.count]) && sb.items[0] != 0) {
+        printf("%d\n", (uint8_t)sb.items[sb.count]);
+        Token t = {
+            .tk   = T_IDENT,
+            .line = cur.line,
+            .col  = cur.col - sb.count,
+        };
+        t.data.String = flush_buffer(&sb);
+        da_append(tokens, t);
+    }
+
+    da_free(sb);
+    return true;
+}
+
+/*
 bool parse_tokens(Nob_String_Builder *data, Tokens *toks) {
     InternalCursor cur = {
         .cursor = data->items,
@@ -148,25 +286,25 @@ bool parse_tokens(Nob_String_Builder *data, Tokens *toks) {
         if (isspace(*cursor)) continue;
 
         if ((*cursor == COMMENT_CHR2 && peek_expect(&cur, 0, COMMENT_CHR2)) ||
-            *cursor == COMMENT_CHR)
-       {
+                *cursor == COMMENT_CHR)
+        {
             next_until_nl(&cur);
             continue;
-       } else {
+        } else {
             switch (*cursor) {
-            case OCPARENT_CHR: { t.tk = T_OCPARENT; } break;
-            case CCPARENT_CHR: { t.tk = T_CCPARENT; } break;
-            case EQUAL_CHR:    { t.tk = T_EQUAL;    } break;
-            case CLOSING_CHR:  { t.tk = T_CLOSING;  } break;
-            case COLON_CHR:    { t.tk = T_COLON;    } break;
-            default: {
-                sb_appendf(&sb, "%c", *cursor);
-            } break;
+                case OCPARENT_CHR: { t.tk = T_OCPARENT; } break;
+                case CCPARENT_CHR: { t.tk = T_CCPARENT; } break;
+                case EQUAL_CHR:    { t.tk = T_EQUAL;    } break;
+                case CLOSING_CHR:  { t.tk = T_CLOSING;  } break;
+                case COLON_CHR:    { t.tk = T_COLON;    } break;
+                default: { sb_appendf(&sb, "%c", *cursor); } break;
             }
         }
-    end:
+end:
         if (t.tk != T_EOF) { da_append(toks, t); }
     }
     da_free(sb);
     return false;
 }
+
+*/

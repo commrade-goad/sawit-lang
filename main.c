@@ -17,14 +17,25 @@ int main(int argc, char **argv) {
     if (sb.count <= 1) perr_exit("Empty file");
     sb_append_null(&sb);
 
+    Arena rarena = {0};
+    if (arena_init(&rarena, ARENA_DEFAULT_SIZE) != 0) {
+        perr_exit("Failed to allocate the runtime stack arena `%s`", strerror(errno));
+    }
     Tokens tokens = {0};
-    parse_tokens(&sb, &tokens);
+    parse_tokens_v2(&sb, &tokens);
     for (size_t i = 0; i < tokens.count; i++) {
-        if (tokens.items[i].tk == T_NUM || tokens.items[i].tk == T_IDENT) {
-            printf("Token kind: %d -> %s\n", tokens.items[i].tk, tokens.items[i].data.String);
-        }
-        else {
-            printf("Token kind: %d\n", tokens.items[i].tk);
+        TokenKind tk = tokens.items[i].tk;
+        switch (tk) {
+            case T_STR:
+            case T_NUM:
+            case T_IDENT:
+                {
+                    printf("Token kind: %d -> %s\n", tk, tokens.items[i].data.String);
+                } break;
+            default:
+                {
+                    printf("Token kind: %d\n", tk);
+                } break;
         }
     }
     return 0;

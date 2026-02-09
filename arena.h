@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 
-#define DEFAULT_SIZE 4096
+#define ARENA_DEFAULT_SIZE 4096
 
 typedef struct ArenaNode {
     struct ArenaNode *next;
@@ -26,7 +26,7 @@ char *arena_alloc(Arena *a, size_t size);
 
 int arena_init(Arena *a, size_t size) {
     if (!a) return -1;
-    if (size == 0) size = DEFAULT_SIZE;
+    if (size == 0) size = ARENA_DEFAULT_SIZE;
     a->head = (ArenaNode *)malloc(sizeof(ArenaNode));
     if (!a->head) return -1;
     *a->head = (ArenaNode){
@@ -80,7 +80,7 @@ char *arena_alloc(Arena *a, size_t size) {
         return ptr;
     }
 
-    size_t new_cap = (size > DEFAULT_SIZE) ? size : DEFAULT_SIZE;
+    size_t new_cap = (size > ARENA_DEFAULT_SIZE) ? size : ARENA_DEFAULT_SIZE;
     ArenaNode *new_node = (ArenaNode *)malloc(sizeof(ArenaNode));
     if (!new_node) return NULL;
 
