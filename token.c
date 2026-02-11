@@ -1,27 +1,41 @@
 #include "token.h"
 #include <ctype.h>
+#include <math.h>
 
-int is_int(const char *s)
+int is_uint(const char *s, uint64_t *res) {
+    char *end;
+    errno = 0;
+    unsigned long long val = strtoull(s, &end, 10);
+    *res = val;
+    if (errno != 0) return 0;    // overflow
+    if (end == s) return 0;      // no digits
+    if (*end != '\0') return 0;  // junk at end
+    return 1;
+}
+
+int is_int(const char *s, int64_t *res)
 {
     char *end;
     errno = 0;
     long val = strtol(s, &end, 10);
-    (void)val;
+    *res = val;
     if (errno != 0) return 0;          // overflow / underflow
     if (end == s) return 0;            // no digits
     if (*end != '\0') return 0;        // extra junk
     return 1;
 }
 
-int is_float(const char *s)
+int is_float(const char *s, double *res)
 {
     char *end;
     errno = 0;
     double val = strtod(s, &end);
-    (void)val;
-    if (errno != 0) return 0;   // overflow / underflow
+
     if (end == s) return 0;     // no conversion
     if (*end != '\0') return 0; // leftover junk
+    if (!isfinite(val)) return 0; // check for overflow to inf
+
+    *res = val;
     return 1;
 }
 
@@ -99,7 +113,65 @@ char *flush_buffer(String_Builder *sb) {
     return out;
 }
 
-// TODO: Dont forget to finish this, right now i am too lazy to continue this
+inline static void make_ident(Tokens *t, String_Builder *sb, int line, int col) {
+    Token flush_t = {
+        .tk   = T_IDENT,
+        .line = line,
+        .col  = col - sb->count,
+    };
+    flush_t.data.String = flush_buffer(sb);
+    da_append(t, flush_t);
+}
+
+inline static void make_ident_or_n(Tokens *t, String_Builder *sb, int line, int col) {
+    if (sb->count == 0) return;
+
+    char *tmp = flush_buffer(sb);
+
+    int64_t ibuf  = 0;
+    uint64_t ubuf = 0;
+    double fbuf   = 0.0;
+
+    if (is_int(tmp, &ibuf)) {
+        Token n = {
+            .tk = T_NUM,
+            .line = line,
+            .col = col - strlen(tmp)
+        };
+        n.data.Int64 = ibuf;
+        da_append(t, n);
+    } else if (is_uint(tmp, &ubuf)) {
+        Token n = {
+            .tk = T_UNUM,
+            .line = line,
+            .col = col - strlen(tmp)
+        };
+        n.data.Uint64 = ubuf;
+        da_append(t, n);
+    } else if (is_float(tmp, &fbuf)) {
+        Token n = {
+            .tk = T_FLO,
+            .line = line,
+            .col = col - strlen(tmp)
+        };
+        n.data.F64 = fbuf;
+        da_append(t, n);
+    } else {
+        Token id = {
+            .tk = T_IDENT,
+            .line = line,
+            .col = col - strlen(tmp)
+        };
+        id.data.String = tmp;
+        da_append(t, id);
+        return;
+    }
+
+    free(tmp);
+}
+
+// TODO: string, binop, etc (LATER)
+
 bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
     InternalCursor cur = {
         .cursor = data->items,
@@ -119,192 +191,82 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
         if (!p) break;
         char ch = *p;
 
-        /* ================= COMMENTS ================= */
-
         /* // comment */
         if (ch == COMMENT_CHR2 && peek_expect(&cur, 0, COMMENT_CHR2)) {
             next(&cur);
             next_until_nl(&cur);
             continue;
         }
-
         /* # comment */
         if (ch == COMMENT_CHR) {
             next_until_nl(&cur);
             continue;
         }
 
-        /* ================= WHITESPACE ================= */
-
-        if (isspace(ch)) {
-            if (sb.count > 0) {
-                Token t = {
-                    .tk   = T_IDENT,
-                    .line = line,
-                    .col  = col - sb.count,
-                };
-                t.data.String = flush_buffer(&sb);
-                da_append(tokens, t);
-            }
-            continue;
-        }
-
-        /* ================= SINGLE-CHAR TOKENS ================= */
+        Token t = {};
+        t.line  = line;
+        t.col   = col;
 
         switch (ch) {
-        case CLOSING_CHR: {
-            if (sb.count > 0) {
-                Token t = {
-                    .tk   = T_IDENT,
-                    .line = line,
-                    .col  = col - sb.count,
-                };
-                t.data.String = flush_buffer(&sb);
-                da_append(tokens, t);
-            }
-
-            Token t = {
-                .tk   = T_CLOSING,
-                .line = line,
-                .col  = col,
-            };
-            da_append(tokens, t);
-            continue;
-        } break;
-        case EQUAL_CHR: {
-            Token t = {
-                .tk   = T_EQUAL,
-                .line = line,
-                .col  = col,
-            };
-            da_append(tokens, t);
-            continue;
-        } break;
-        case OCPARENT_CHR: {
-            Token t = {
-                .tk = T_OCPARENT,
-                .line = line,
-                .col  = col,
-            };
-            da_append(tokens, t);
-            continue;
-        } break;
-        case CCPARENT_CHR: {
-            Token t = {
-                .tk = T_CCPARENT,
-                .line = line,
-                .col  = col,
-            };
-            da_append(tokens, t);
-            continue;
-        } break;
-        case COLON_CHR: {
-            Token t = {
-                .tk = T_COLON,
-                .line = line,
-                .col  = col,
-            };
-            da_append(tokens, t);
-            continue;
-        } break;
-        default: {} break;
+        case CLOSING_CHR:
+        case EQUAL_CHR:
+        case OPARENT_CHR:
+        case CPARENT_CHR:
+        case OCPARENT_CHR:
+        case CCPARENT_CHR:
+        case COLON_CHR:
+            if (sb.count > 0) { make_ident_or_n(tokens, &sb, line, col); }
+            break;
+        default:
+            break;
         }
 
-        /* ================= IDENT / NUMBER ================= */
+        bool match = true;
+        switch (ch) {
+        case CLOSING_CHR: {
+            t.tk = T_CLOSING;
+            da_append(tokens, t);
+        } break;
+        case EQUAL_CHR: {
+            t.tk = T_EQUAL;
+            da_append(tokens, t);
+        } break;
+        case OPARENT_CHR: {
+            t.tk = T_OPARENT;
+            da_append(tokens, t);
+        } break;
+        case CPARENT_CHR: {
+            t.tk = T_CPARENT;
+            da_append(tokens, t);
+        } break;
+        case OCPARENT_CHR: {
+            t.tk = T_OCPARENT;
+            da_append(tokens, t);
+        } break;
+        case CCPARENT_CHR: {
+            t.tk = T_CCPARENT;
+            da_append(tokens, t);
+        } break;
+        case COLON_CHR: {
+            t.tk = T_COLON;
+            da_append(tokens, t);
+        } break;
+        default: { match = false; } break;
+        }
+
+        if (isspace(ch) || match) {
+            if (sb.count > 0) { make_ident_or_n(tokens, &sb, line, col); }
+            continue;
+        }
 
         sb_appendf(&sb, "%c", ch);
     }
 
+    /* NOTE: exhaust the last token */
     if (sb.count > 0 && !isspace(sb.items[sb.count]) && sb.items[0] != 0) {
-        printf("%d\n", (uint8_t)sb.items[sb.count]);
-        Token t = {
-            .tk   = T_IDENT,
-            .line = cur.line,
-            .col  = cur.col - sb.count,
-        };
-        t.data.String = flush_buffer(&sb);
-        da_append(tokens, t);
+        make_ident_or_n(tokens, &sb, cur.line, cur.col);
     }
 
     da_free(sb);
     return true;
 }
-
-/*
-bool parse_tokens(Nob_String_Builder *data, Tokens *toks) {
-    InternalCursor cur = {
-        .cursor = data->items,
-        .offset = 0,
-        .line = 1,
-        .col = 1,
-        .data = data,
-    };
-
-    String_Builder sb = {0};
-
-    // TODO: I feels like i want to rewrite this for the N times.
-    // TODO: Handle the error mine friende
-    while (cur.offset < data->count) {
-        size_t line = cur.line;
-        size_t col = cur.col;
-        char *cursor = next(&cur);
-
-        Token t = {0};
-        t.col = col;
-        t.line = line;
-
-        if (cur.offset == data->count) {
-            // Mean didnt flush correctly the last token.
-            if (sb.count > 0) {
-                t.tk = T_ERR;
-            } else {
-                t.tk = T_EOF;
-            }
-            da_append(toks, t);
-            break;
-        }
-
-        if ((isspace(*cursor) || *cursor == CLOSING_CHR) && sb.count > 0)
-        {
-            char *extracted = flush_buffer(&sb);
-            if (strncmp(extracted, LET_STR, strlen(LET_STR)) == 0) {
-                t.tk = T_LET;
-                free(extracted);
-                goto end;
-            } else {
-                if (is_int(extracted) || is_float(extracted)) {
-                    t.tk = T_NUM;
-                    t.data.String = extracted;
-                } else {
-                    t.tk = T_IDENT;
-                    t.data.String = extracted;
-                }
-                goto end;
-            }
-        }
-
-        if (isspace(*cursor)) continue;
-
-        if ((*cursor == COMMENT_CHR2 && peek_expect(&cur, 0, COMMENT_CHR2)) ||
-                *cursor == COMMENT_CHR)
-        {
-            next_until_nl(&cur);
-            continue;
-        } else {
-            switch (*cursor) {
-                case OCPARENT_CHR: { t.tk = T_OCPARENT; } break;
-                case CCPARENT_CHR: { t.tk = T_CCPARENT; } break;
-                case EQUAL_CHR:    { t.tk = T_EQUAL;    } break;
-                case CLOSING_CHR:  { t.tk = T_CLOSING;  } break;
-                case COLON_CHR:    { t.tk = T_COLON;    } break;
-                default: { sb_appendf(&sb, "%c", *cursor); } break;
-            }
-        }
-end:
-        if (t.tk != T_EOF) { da_append(toks, t); }
-    }
-    da_free(sb);
-    return false;
-}
-
-*/

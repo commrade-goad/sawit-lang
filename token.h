@@ -11,6 +11,8 @@
 #define COMMENT_CHR '#'
 #define OCPARENT_CHR '{'
 #define CCPARENT_CHR '}'
+#define OPARENT_CHR '('
+#define CPARENT_CHR ')'
 #define CLOSING_CHR ';'
 #define EQUAL_CHR '='
 #define COLON_CHR ':'
@@ -44,6 +46,8 @@ typedef enum {
     T_CHR,
     T_STR,
     T_NUM,
+    T_UNUM,
+    T_FLO,
 
     T_ERR,
 } TokenKind;
@@ -52,8 +56,9 @@ typedef struct {
     TokenKind tk;
     union {
         char     Char;
-        int32_t  Int32;
-        int64_t  Int64;
+        int64_t  Int64;  // i will just save it as the biggest for now will be handled later.
+        uint64_t Uint64; // i will just save it as the biggest for now will be handled later.
+        double   F64;    // i will just save it as the biggest for now will be handled later.
         char    *String;
     } data;
     size_t line, col;

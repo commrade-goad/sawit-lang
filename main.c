@@ -24,19 +24,29 @@ int main(int argc, char **argv) {
     Tokens tokens = {0};
     parse_tokens_v2(&sb, &tokens);
     for (size_t i = 0; i < tokens.count; i++) {
-        TokenKind tk = tokens.items[i].tk;
-        switch (tk) {
-            case T_STR:
-            case T_NUM:
-            case T_IDENT:
-                {
-                    printf("Token kind: %d -> %s\n", tk, tokens.items[i].data.String);
-                } break;
-            default:
-                {
-                    printf("Token kind: %d\n", tk);
-                } break;
+        Token *tok = &tokens.items[i];
+        printf("Token kind: %d -> ", tok->tk);
+
+        switch (tok->tk) {
+        case T_IDENT:
+        case T_STR:
+            printf("%s", tok->data.String);
+            break;
+        case T_UNUM:
+            printf("%lu", tok->data.Uint64);
+            break;
+        case T_NUM:
+            printf("%ld", tok->data.Int64);
+            break;
+        case T_FLO:
+            printf("%f", tok->data.F64);
+            break;
+        default:
+            printf("(symbol)");
+            break;
         }
+
+        printf("\n");
     }
     return 0;
 }
