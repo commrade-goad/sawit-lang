@@ -40,8 +40,9 @@ static bool match(Parser *p, TokenKind kind) {
 }
 
 static void expect(Parser *p, TokenKind kind) {
+    Token *cr = peek(p);
     if (!match(p, kind)) {
-        fprintf(stderr, "Parse error: expected token %d\n", kind);
+        perr("%s:%lu:%lu: Expected token %d, got %d", cr->loc.name, cr->loc.line, cr->loc.col, kind, cr->tk);
         exit(1);
     }
 }
@@ -167,6 +168,11 @@ static Expr *parse_expression(Parser *p, int min_bp) {
     return lhs;
 }
 
+ /* C BULLSHIT */
+static Stmt *parse_statement(Parser *p);
+static Stmt *parse_let(Parser *p);
+static Stmt *parse_block(Parser *p);
+
 static Stmt *parse_let(Parser *p) {
     Token *name = peek(p);
     expect(p, T_IDENT);
@@ -185,9 +191,30 @@ static Stmt *parse_let(Parser *p) {
     return stmt;
 }
 
+static Stmt *parse_block(Parser *p) {
+    Stmt *block = make_stmt(STMT_BLOCK, p->arena);
+
+    block->as.block.statements.items = NULL;
+    block->as.block.statements.count = 0;
+    block->as.block.statements.capacity = 0;
+
+    while (!check(p, T_CCPARENT) && !is_at_end(p)) {
+        Stmt *stmt = parse_statement(p);
+        da_append(&block->as.block.statements, stmt);
+    }
+
+    expect(p, T_CCPARENT);
+
+    return block;
+}
+
 static Stmt *parse_statement(Parser *p) {
     if (match(p, T_LET)) {
         return parse_let(p);
+    }
+
+    if (match(p, T_OCPARENT)) {
+        return parse_block(p);
     }
 
     Expr *expr = parse_expression(p, 0);
