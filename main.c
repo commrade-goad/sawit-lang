@@ -24,46 +24,46 @@ int main(int argc, char **argv) {
     }
     Tokens tokens = {0};
     parse_tokens_v2(&sb, &tokens);
-    /* for (size_t i = 0; i < tokens.count; i++) { */
-    /*     Token *tok = &tokens.items[i]; */
-    /*     printf("Token kind: %d -> ", tok->tk); */
+    for (size_t i = 0; i < tokens.count; i++) {
+        Token *tok = &tokens.items[i];
+        printf("Token kind: %d -> ", tok->tk);
 
-    /*     switch (tok->tk) { */
-    /*     case T_IDENT: */
-    /*     case T_STR: */
-    /*         printf("%s", tok->data.String); */
-    /*         break; */
-    /*     case T_NUM: */
-    /*         printf("%lu", tok->data.Uint64); */
-    /*         break; */
-    /*     case T_FLO: */
-    /*         printf("%f", tok->data.F64); */
-    /*         break; */
-    /*     case T_EQUAL: */
-    /*         printf("="); */
-    /*         break; */
-    /*     case T_OPARENT: */
-    /*         printf("("); */
-    /*         break; */
-    /*     case T_CPARENT: */
-    /*         printf(")"); */
-    /*         break; */
-    /*     case T_OCPARENT: */
-    /*         printf("{"); */
-    /*         break; */
-    /*     case T_CCPARENT: */
-    /*         printf("}"); */
-    /*         break; */
-    /*     case T_CLOSING: */
-    /*         printf("; (CLOSING)"); */
-    /*         break; */
-    /*     default: */
-    /*         printf("(symbol)"); */
-    /*         break; */
-    /*     } */
+        switch (tok->tk) {
+        case T_IDENT:
+        case T_STR:
+            printf("%s", tok->data.String);
+            break;
+        case T_NUM:
+            printf("%lu", tok->data.Uint64);
+            break;
+        case T_FLO:
+            printf("%f", tok->data.F64);
+            break;
+        case T_EQUAL:
+            printf("=");
+            break;
+        case T_OPARENT:
+            printf("(");
+            break;
+        case T_CPARENT:
+            printf(")");
+            break;
+        case T_OCPARENT:
+            printf("{");
+            break;
+        case T_CCPARENT:
+            printf("}");
+            break;
+        case T_CLOSING:
+            printf("; (CLOSING)");
+            break;
+        default:
+            printf("(symbol)");
+            break;
+        }
 
-    /*     printf("\n"); */
-    /* } */
+        printf("\n");
+    }
     Statements program = {0};
     make_ast(&program, &tokens);
     for (size_t i = 0; i < program.count; i++) {

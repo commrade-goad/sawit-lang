@@ -8,9 +8,11 @@
 typedef enum {
     AST_LITERAL_INT,
     AST_LITERAL_FLOAT,
+    AST_LITERAL_STRING,
     AST_IDENTIFIER,
     AST_UNARY_OP,      // something like -5 +2 *a so operator to 1 num
     AST_BINARY_OP,     // lhs [SOMETHING] rhs
+    AST_ASSIGN,
 } ExprType;
 
 typedef enum {
@@ -65,6 +67,12 @@ struct Expr {
             int op; // The token type (T_MIN, etc)
             Expr *right;
         } unary;
+
+        // a = expr;
+        struct {
+            char *name;
+            Expr *value;
+        } assign;
 
         // Binary Op (e.g., 5 + 5)
         struct {

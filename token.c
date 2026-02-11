@@ -161,7 +161,7 @@ inline static void make_ident_or_n(Tokens *t, String_Builder *sb, int line, int 
     free(tmp);
 }
 
-// TODO: string, etc (LATER)
+// TODO: boolean, error reporting, etc
 
 bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
     InternalCursor cur = {
@@ -201,6 +201,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
         switch (ch) {
         case '*':
         case '/':
+        case STRING_CHR: // "
         case CLOSING_CHR:
         case EQUAL_CHR:
         case OPARENT_CHR:
@@ -216,6 +217,45 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
 
         bool match = true;
         switch (ch) {
+        case STRING_CHR: {
+            while (true) {
+                p = next(&cur);
+
+                if (!p) {
+                    // TODO: Error - Unexpected EOF in string
+                    break;
+                }
+                if (*p == STRING_CHR) break;
+                if (*p == '\n') {
+                    // TODO: Error - Multi-line strings not allowed or handle them
+                    break;
+                }
+
+                if (*p == '\\') {
+                    char *esc = next(&cur);
+                    if (!esc) break; // TODO: Error: trailing backslash at end of file
+
+                    switch (*esc) {
+                    case 'n':  sb_appendf(&sb, "\n"); break;
+                    case 't':  sb_appendf(&sb, "\t"); break;
+                    case 'r':  sb_appendf(&sb, "\r"); break;
+                    case '\\': sb_appendf(&sb, "\\"); break;
+                    case '"':  sb_appendf(&sb, "\""); break;
+                    case '0':  sb_appendf(&sb, "\\0"); break;
+                    default:
+                        sb_appendf(&sb, "%c", *esc);
+                        break;
+                    }
+                } else {
+                    sb_appendf(&sb, "%c", *p);
+                }
+            }
+
+            t.tk = T_STR;
+            t.data.String = flush_buffer(&sb);
+            da_append(tokens, t);
+            continue;
+        }
         case '+':
         case '-':
             // SCIENTIFIC NOTATION CHECK:

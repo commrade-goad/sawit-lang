@@ -16,6 +16,7 @@
 #define CLOSING_CHR ';'
 #define EQUAL_CHR '='
 #define COLON_CHR ':'
+#define STRING_CHR '"'
 
 typedef enum {
     T_EOF = 0,
@@ -28,7 +29,7 @@ typedef enum {
     T_CSPARENT, // ]
 
     T_CLOSING,  // ;
-    T_EQUAL,
+    T_EQUAL,    // =
     T_FATARROW, // =>
     T_ARROW,    // ->
     T_COLON,    // :
@@ -52,8 +53,6 @@ typedef enum {
     T_STR,
     T_NUM,
     T_FLO,
-
-    T_ERR,
 } TokenKind;
 
 typedef struct {

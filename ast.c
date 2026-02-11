@@ -57,20 +57,25 @@ Stmt *make_stmt(StmtType type) {
 
 static int infix_binding_power(TokenKind tk, int *left_bp, int *right_bp) {
     switch (tk) {
-        case T_PLUS:
-        case T_MIN:
-            *left_bp = 10;
-            *right_bp = 11;
-            return 1;
+    case T_PLUS:
+    case T_MIN:
+        *left_bp = 10;
+        *right_bp = 11;
+        return 1;
 
-        case T_STAR:
-        case T_DIV:
-            *left_bp = 20;
-            *right_bp = 21;
-            return 1;
+    case T_STAR:
+    case T_DIV:
+        *left_bp = 20;
+        *right_bp = 21;
+        return 1;
 
-        default:
-            return 0;
+    case T_EQUAL:
+        *left_bp = 5;
+        *right_bp = 4;
+        return 1;
+
+    default:
+        return 0;
     }
 }
 
@@ -82,48 +87,46 @@ static Expr *parse_expression(Parser *p, int min_bp) {
 
     switch (tok->tk) {
 
-        case T_NUM: {
-            lhs = make_expr(AST_LITERAL_INT);
-            lhs->as.uint_val = tok->data.Uint64;
-            break;
-        }
+    case T_NUM: {
+        lhs = make_expr(AST_LITERAL_INT);
+        lhs->as.uint_val = tok->data.Uint64;
+    } break;
 
-        case T_FLO: {
-            lhs = make_expr(AST_LITERAL_FLOAT);
-            lhs->as.float_val = tok->data.F64;
-            break;
-        }
+    case T_FLO: {
+        lhs = make_expr(AST_LITERAL_FLOAT);
+        lhs->as.float_val = tok->data.F64;
+    } break;
 
-        case T_IDENT: {
-            lhs = make_expr(AST_IDENTIFIER);
-            lhs->as.identifier = tok->data.String;
-            break;
-        }
+    case T_STR: {
+        lhs = make_expr(AST_LITERAL_STRING);
+        lhs->as.identifier = tok->data.String;
+    } break;
+    case T_IDENT: {
+        lhs = make_expr(AST_IDENTIFIER);
+        lhs->as.identifier = tok->data.String;
+    } break;
 
-        case T_OPARENT: {
-            lhs = parse_expression(p, 0);
-            expect(p, T_CPARENT);
-            break;
-        }
+    case T_OPARENT: {
+        lhs = parse_expression(p, 0);
+        expect(p, T_CPARENT);
+    } break;
 
-        case T_MIN: { // unary minus
-            Expr *rhs = parse_expression(p, 30);
+    case T_MIN: { // unary minus
+        Expr *rhs = parse_expression(p, 30);
 
-            lhs = make_expr(AST_UNARY_OP);
-            lhs->as.unary.op = T_MIN;
-            lhs->as.unary.right = rhs;
-            break;
-        }
+        lhs = make_expr(AST_UNARY_OP);
+        lhs->as.unary.op = T_MIN;
+        lhs->as.unary.right = rhs;
+    } break;
 
-        default:
-            fprintf(stderr, "Unexpected token in expression\n");
-            exit(1);
+    default:
+        fprintf(stderr, "Unexpected token in expression\n");
+        exit(1);
     }
 
     // ----- Infix Loop -----
     while (1) {
         Token *next = peek(p);
-
         int left_bp, right_bp;
         if (!infix_binding_power(next->tk, &left_bp, &right_bp))
             break;
@@ -131,9 +134,24 @@ static Expr *parse_expression(Parser *p, int min_bp) {
         if (left_bp < min_bp)
             break;
 
+        TokenKind op = next->tk;
         advance(p);
 
         Expr *rhs = parse_expression(p, right_bp);
+
+        if (op == T_EQUAL) {
+            if (lhs->type != AST_IDENTIFIER) {
+                fprintf(stderr, "Invalid assignment target\n");
+                exit(1);
+            }
+
+            Expr *assign = make_expr(AST_ASSIGN);
+            assign->as.assign.name = lhs->as.identifier;
+            assign->as.assign.value = rhs;
+
+            lhs = assign;
+            continue;
+        }
 
         Expr *bin = make_expr(AST_BINARY_OP);
         bin->as.binary.op = next->tk;
@@ -168,8 +186,12 @@ static Stmt *parse_statement(Parser *p) {
         return parse_let(p);
     }
 
-    fprintf(stderr, "Unknown statement\n");
-    exit(1);
+    Expr *expr = parse_expression(p, 0);
+    expect(p, T_CLOSING);
+
+    Stmt *stmt = make_stmt(STMT_EXPR);
+    stmt->as.expr.expr = expr;
+    return stmt;
 }
 
 static void print_indent(int n) {
@@ -182,28 +204,36 @@ void print_expr(Expr *e, int indent) {
     print_indent(indent);
 
     switch (e->type) {
-        case AST_LITERAL_INT:
-            printf("INT(%lu)\n", e->as.uint_val);
-            break;
+    case AST_LITERAL_INT:
+        printf("INT(%lu)\n", e->as.uint_val);
+        break;
 
-        case AST_LITERAL_FLOAT:
-            printf("FLOAT(%f)\n", e->as.float_val);
-            break;
+    case AST_LITERAL_FLOAT:
+        printf("FLOAT(%f)\n", e->as.float_val);
+        break;
 
-        case AST_IDENTIFIER:
-            printf("IDENT(%s)\n", e->as.identifier);
-            break;
+    case AST_LITERAL_STRING:
+        printf("STRING(%s)\n", e->as.identifier);
+        break;
 
-        case AST_UNARY_OP:
-            printf("UNARY(op=%d)\n", e->as.unary.op);
-            print_expr(e->as.unary.right, indent + 1);
-            break;
+    case AST_IDENTIFIER:
+        printf("IDENT(%s)\n", e->as.identifier);
+        break;
 
-        case AST_BINARY_OP:
-            printf("BINARY(op=%d)\n", e->as.binary.op);
-            print_expr(e->as.binary.left, indent + 1);
-            print_expr(e->as.binary.right, indent + 1);
-            break;
+    case AST_UNARY_OP:
+        printf("UNARY(op=%d)\n", e->as.unary.op);
+        print_expr(e->as.unary.right, indent + 1);
+        break;
+
+    case AST_BINARY_OP:
+        printf("BINARY(op=%d)\n", e->as.binary.op);
+        print_expr(e->as.binary.left, indent + 1);
+        print_expr(e->as.binary.right, indent + 1);
+        break;
+    case AST_ASSIGN:
+        printf("ASSIGN(%s)\n", e->as.assign.name);
+        print_expr(e->as.assign.value, indent + 1);
+        break;
     }
 }
 
@@ -211,22 +241,22 @@ void print_stmt(Stmt *s, int indent) {
     print_indent(indent);
 
     switch (s->type) {
-        case STMT_LET:
-            printf("LET %s\n", s->as.let.name);
-            print_expr(s->as.let.value, indent + 1);
-            break;
+    case STMT_LET:
+        printf("LET %s\n", s->as.let.name);
+        print_expr(s->as.let.value, indent + 1);
+        break;
 
-        case STMT_EXPR:
-            printf("EXPR_STMT\n");
-            print_expr(s->as.expr.expr, indent + 1);
-            break;
+    case STMT_EXPR:
+        printf("EXPR_STMT\n");
+        print_expr(s->as.expr.expr, indent + 1);
+        break;
 
-        case STMT_BLOCK:
-            printf("BLOCK\n");
-            for (size_t i = 0; i < s->as.block.statements.count; i++) {
-                print_stmt(s->as.block.statements.items[i], indent + 1);
-            }
-            break;
+    case STMT_BLOCK:
+        printf("BLOCK\n");
+        for (size_t i = 0; i < s->as.block.statements.count; i++) {
+            print_stmt(s->as.block.statements.items[i], indent + 1);
+        }
+        break;
     }
 }
 
