@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "token.h"
+#include "arena.h"
+#include "utils.h"
 
 typedef enum {
     AST_LITERAL_INT,
@@ -33,6 +35,7 @@ typedef struct {
 
 struct Stmt {
     StmtType type;
+    SrcLoc loc;
 
     union {
         // Expression statement
@@ -56,6 +59,8 @@ struct Stmt {
 
 struct Expr {
     ExprType type;
+    SrcLoc loc;
+
     union {
         // Literals
         uint64_t uint_val;
@@ -83,9 +88,9 @@ struct Expr {
     } as;
 };
 
-Expr *make_expr(ExprType type);
-Stmt *make_stmt(StmtType type);
-void make_ast(Statements *stmts, Tokens *t);
+Expr *make_expr(ExprType type, Arena *a);
+Stmt *make_stmt(StmtType type, Arena *a);
+void make_ast(Arena *a, Statements *stmts, Tokens *t);
 void print_stmt(Stmt *s, int indent);
 
 #endif // EXPR_H

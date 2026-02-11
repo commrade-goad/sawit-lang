@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #define NOB_STRIP_PREFIX
 #include "nob.h"
+#include "utils.h"
 
 #define LET_STR "let"
 #define COMMENT_CHR2 '/'
@@ -64,7 +65,7 @@ typedef struct {
         double   F64;    // i will just save it as the biggest for now will be handled later.
         char    *String;
     } data;
-    size_t line, col;
+    SrcLoc loc;
 } Token;
 
 typedef struct {
@@ -80,7 +81,6 @@ typedef struct {
     Nob_String_Builder *data;
 } InternalCursor;
 
-bool parse_tokens(Nob_String_Builder *data, Tokens *toks);
-bool parse_tokens_v2(Nob_String_Builder *data, Tokens *t);
+bool parse_tokens_v2(Nob_String_Builder *data, Tokens *t, const char *name);
 
 #endif

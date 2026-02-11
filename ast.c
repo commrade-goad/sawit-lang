@@ -1,9 +1,12 @@
 #include "ast.h"
 #include "token.h"
 
+#define BIGGEST_POWER 30
+
 typedef struct {
     Tokens *tokens;
     size_t current;
+    Arena *arena;
 } Parser;
 
 static Token *peek(Parser *p) {
@@ -43,14 +46,14 @@ static void expect(Parser *p, TokenKind kind) {
     }
 }
 
-Expr *make_expr(ExprType type) {
-    Expr *n = malloc(sizeof(Expr));
+Expr *make_expr(ExprType type, Arena *a) {
+    Expr *n = (Expr *)arena_alloc(a, sizeof(Expr));
     n->type = type;
     return n;
 }
 
-Stmt *make_stmt(StmtType type) {
-    Stmt *n = malloc(sizeof(Stmt));
+Stmt *make_stmt(StmtType type, Arena *a) {
+    Stmt *n = (Stmt *)arena_alloc(a, sizeof(Stmt));
     n->type = type;
     return n;
 }
@@ -88,21 +91,21 @@ static Expr *parse_expression(Parser *p, int min_bp) {
     switch (tok->tk) {
 
     case T_NUM: {
-        lhs = make_expr(AST_LITERAL_INT);
+        lhs = make_expr(AST_LITERAL_INT, p->arena);
         lhs->as.uint_val = tok->data.Uint64;
     } break;
 
     case T_FLO: {
-        lhs = make_expr(AST_LITERAL_FLOAT);
+        lhs = make_expr(AST_LITERAL_FLOAT, p->arena);
         lhs->as.float_val = tok->data.F64;
     } break;
 
     case T_STR: {
-        lhs = make_expr(AST_LITERAL_STRING);
+        lhs = make_expr(AST_LITERAL_STRING, p->arena);
         lhs->as.identifier = tok->data.String;
     } break;
     case T_IDENT: {
-        lhs = make_expr(AST_IDENTIFIER);
+        lhs = make_expr(AST_IDENTIFIER, p->arena);
         lhs->as.identifier = tok->data.String;
     } break;
 
@@ -112,9 +115,9 @@ static Expr *parse_expression(Parser *p, int min_bp) {
     } break;
 
     case T_MIN: { // unary minus
-        Expr *rhs = parse_expression(p, 30);
+        Expr *rhs = parse_expression(p, BIGGEST_POWER);
 
-        lhs = make_expr(AST_UNARY_OP);
+        lhs = make_expr(AST_UNARY_OP, p->arena);
         lhs->as.unary.op = T_MIN;
         lhs->as.unary.right = rhs;
     } break;
@@ -145,7 +148,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
                 exit(1);
             }
 
-            Expr *assign = make_expr(AST_ASSIGN);
+            Expr *assign = make_expr(AST_ASSIGN, p->arena);
             assign->as.assign.name = lhs->as.identifier;
             assign->as.assign.value = rhs;
 
@@ -153,7 +156,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
             continue;
         }
 
-        Expr *bin = make_expr(AST_BINARY_OP);
+        Expr *bin = make_expr(AST_BINARY_OP, p->arena);
         bin->as.binary.op = next->tk;
         bin->as.binary.left = lhs;
         bin->as.binary.right = rhs;
@@ -174,7 +177,8 @@ static Stmt *parse_let(Parser *p) {
 
     expect(p, T_CLOSING);
 
-    Stmt *stmt = make_stmt(STMT_LET);
+    Stmt *stmt = make_stmt(STMT_LET, p->arena);
+    stmt->loc = name->loc;
     stmt->as.let.name = name->data.String;
     stmt->as.let.value = value;
 
@@ -189,7 +193,7 @@ static Stmt *parse_statement(Parser *p) {
     Expr *expr = parse_expression(p, 0);
     expect(p, T_CLOSING);
 
-    Stmt *stmt = make_stmt(STMT_EXPR);
+    Stmt *stmt = make_stmt(STMT_EXPR, p->arena);
     stmt->as.expr.expr = expr;
     return stmt;
 }
@@ -260,10 +264,11 @@ void print_stmt(Stmt *s, int indent) {
     }
 }
 
-void make_ast(Statements *stmts, Tokens *t) {
+void make_ast(Arena *a, Statements *stmts, Tokens *t) {
     Parser p = {0};
     p.tokens = t;
     p.current = 0;
+    p.arena = a;
 
     while (!is_at_end(&p)) {
         Stmt *stmt = parse_statement(&p);

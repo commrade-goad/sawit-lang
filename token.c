@@ -1,6 +1,7 @@
 #include "token.h"
 #include <ctype.h>
 #include <math.h>
+#include "utils.h"
 
 int is_uint(const char *s, uint64_t *res) {
     char *end;
@@ -101,17 +102,7 @@ char *flush_buffer(String_Builder *sb) {
     return out;
 }
 
-inline static void make_ident(Tokens *t, String_Builder *sb, int line, int col) {
-    Token flush_t = {
-        .tk   = T_IDENT,
-        .line = line,
-        .col  = col - sb->count,
-    };
-    flush_t.data.String = flush_buffer(sb);
-    da_append(t, flush_t);
-}
-
-inline static void make_ident_or_n(Tokens *t, String_Builder *sb, int line, int col) {
+inline static void make_ident_or_n(Tokens *t, String_Builder *sb, SrcLoc loc) {
     if (sb->count == 0) return;
 
     char *tmp = flush_buffer(sb);
@@ -123,9 +114,9 @@ inline static void make_ident_or_n(Tokens *t, String_Builder *sb, int line, int 
     if (strcmp(tmp, LET_STR) == 0) {
         Token n = {
             .tk   = T_LET,
-            .line = line,
-            .col  = col - strlen(tmp)
+            .loc = loc,
         };
+        n.loc.col -= strlen(tmp);
         free(tmp);
         da_append(t, n);
         return;
@@ -134,25 +125,25 @@ inline static void make_ident_or_n(Tokens *t, String_Builder *sb, int line, int 
     if (is_uint(tmp, &ubuf)) {
         Token n = {
             .tk = T_NUM,
-            .line = line,
-            .col = col - strlen(tmp)
+            .loc = loc,
         };
+        n.loc.col -= strlen(tmp);
         n.data.Uint64 = ubuf;
         da_append(t, n);
     } else if (is_float(tmp, &fbuf)) {
         Token n = {
             .tk = T_FLO,
-            .line = line,
-            .col = col - strlen(tmp)
+            .loc = loc,
         };
+        n.loc.col -= strlen(tmp);
         n.data.F64 = fbuf;
         da_append(t, n);
     } else {
         Token id = {
             .tk = T_IDENT,
-            .line = line,
-            .col = col - strlen(tmp)
+            .loc = loc,
         };
+        id.loc.col -= strlen(tmp);
         id.data.String = tmp;
         da_append(t, id);
         return;
@@ -163,7 +154,8 @@ inline static void make_ident_or_n(Tokens *t, String_Builder *sb, int line, int 
 
 // TODO: boolean, error reporting, etc
 
-bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
+bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name) {
+    bool ret = true;
     InternalCursor cur = {
         .cursor = data->items,
         .offset = 0,
@@ -193,10 +185,14 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
             next_until_nl(&cur);
             continue;
         }
+        SrcLoc currentloc = (SrcLoc){
+            .line  = line,
+            .col   = col,
+            .name  = name,
+        };
 
         Token t = {};
-        t.line  = line;
-        t.col   = col;
+        t.loc = currentloc;
 
         switch (ch) {
         case '*':
@@ -209,7 +205,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
         case OCPARENT_CHR:
         case CCPARENT_CHR:
         case COLON_CHR:
-            if (sb.count > 0) { make_ident_or_n(tokens, &sb, line, col); }
+            if (sb.count > 0) { make_ident_or_n(tokens, &sb, currentloc); }
             break;
         default:
             break;
@@ -222,18 +218,24 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
                 p = next(&cur);
 
                 if (!p) {
-                    // TODO: Error - Unexpected EOF in string
+                    ret = false;
+                    perr("%s:%lu:%lu: Unexpected EOF in string", currentloc.name, currentloc.line, currentloc.col);
                     break;
                 }
                 if (*p == STRING_CHR) break;
                 if (*p == '\n') {
-                    // TODO: Error - Multi-line strings not allowed or handle them
+                    ret = false;
+                    perr("%s:%lu:%lu: Unclosed string blocks", currentloc.name, currentloc.line, currentloc.col);
                     break;
                 }
 
                 if (*p == '\\') {
                     char *esc = next(&cur);
-                    if (!esc) break; // TODO: Error: trailing backslash at end of file
+                    if (!esc) {
+                        ret = false;
+                        perr("%s:%lu:%lu: trailing backslash at end of file", currentloc.name, currentloc.line, currentloc.col);
+                        break;
+                    }
 
                     switch (*esc) {
                     case 'n':  sb_appendf(&sb, "\n"); break;
@@ -264,7 +266,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
                 continue;
             }
 
-            if (sb.count > 0) make_ident_or_n(tokens, &sb, line, col);
+            if (sb.count > 0) make_ident_or_n(tokens, &sb, currentloc);
             t.tk = (ch == '+') ? T_PLUS : T_MIN;
             da_append(tokens, t);
             continue;
@@ -306,7 +308,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
         }
 
         if (isspace(ch) || match) {
-            if (sb.count > 0) make_ident_or_n(tokens, &sb, line, col);
+            if (sb.count > 0) make_ident_or_n(tokens, &sb, currentloc);
             continue;
         }
 
@@ -315,16 +317,15 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
 
     /* NOTE: exhaust the last token */
     if (sb.count > 0 && sb.items[0] != 0) {
-        make_ident_or_n(tokens, &sb, cur.line, cur.col);
+        make_ident_or_n(tokens, &sb, (SrcLoc) { name, (size_t)cur.line, (size_t)cur.col });
     }
 
     Token teof = {
         .tk   = T_EOF,
-        .line = cur.line,
-        .col  = cur.col
+        .loc = (SrcLoc) { name, (size_t)cur.line, (size_t)cur.col },
     };
     da_append(tokens, teof);
 
     da_free(sb);
-    return true;
+    return ret;
 }

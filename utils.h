@@ -4,6 +4,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+typedef struct {
+    const char *name;
+    size_t line;
+    size_t col;
+} SrcLoc;
+
 #define perr_exit(fmt, ...)\
     do { fprintf(stderr, "ERROR: " fmt "\n", ##__VA_ARGS__); exit(1); } while(0)
 
