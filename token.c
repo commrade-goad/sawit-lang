@@ -5,23 +5,11 @@
 int is_uint(const char *s, uint64_t *res) {
     char *end;
     errno = 0;
-    unsigned long long val = strtoull(s, &end, 10);
+    uint64_t val = strtoull(s, &end, 10);
     *res = val;
     if (errno != 0) return 0;    // overflow
     if (end == s) return 0;      // no digits
     if (*end != '\0') return 0;  // junk at end
-    return 1;
-}
-
-int is_int(const char *s, int64_t *res)
-{
-    char *end;
-    errno = 0;
-    long val = strtol(s, &end, 10);
-    *res = val;
-    if (errno != 0) return 0;          // overflow / underflow
-    if (end == s) return 0;            // no digits
-    if (*end != '\0') return 0;        // extra junk
     return 1;
 }
 
@@ -128,21 +116,24 @@ inline static void make_ident_or_n(Tokens *t, String_Builder *sb, int line, int 
 
     char *tmp = flush_buffer(sb);
 
-    int64_t ibuf  = 0;
     uint64_t ubuf = 0;
     double fbuf   = 0.0;
 
-    if (is_int(tmp, &ibuf)) {
+    // keyword stuff
+    if (strcmp(tmp, LET_STR) == 0) {
+        Token n = {
+            .tk   = T_LET,
+            .line = line,
+            .col  = col - strlen(tmp)
+        };
+        free(tmp);
+        da_append(t, n);
+        return;
+    }
+
+    if (is_uint(tmp, &ubuf)) {
         Token n = {
             .tk = T_NUM,
-            .line = line,
-            .col = col - strlen(tmp)
-        };
-        n.data.Int64 = ibuf;
-        da_append(t, n);
-    } else if (is_uint(tmp, &ubuf)) {
-        Token n = {
-            .tk = T_UNUM,
             .line = line,
             .col = col - strlen(tmp)
         };
@@ -170,7 +161,7 @@ inline static void make_ident_or_n(Tokens *t, String_Builder *sb, int line, int 
     free(tmp);
 }
 
-// TODO: string, binop, etc (LATER)
+// TODO: string, etc (LATER)
 
 bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
     InternalCursor cur = {
@@ -208,6 +199,8 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
         t.col   = col;
 
         switch (ch) {
+        case '*':
+        case '/':
         case CLOSING_CHR:
         case EQUAL_CHR:
         case OPARENT_CHR:
@@ -223,6 +216,24 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
 
         bool match = true;
         switch (ch) {
+        case '+':
+        case '-':
+            // SCIENTIFIC NOTATION CHECK:
+            if (sb.count > 0 && (toupper(sb.items[sb.count-1]) == 'E')) {
+                sb_appendf(&sb, "%c", ch);
+                continue;
+            }
+
+            if (sb.count > 0) make_ident_or_n(tokens, &sb, line, col);
+            t.tk = (ch == '+') ? T_PLUS : T_MIN;
+            da_append(tokens, t);
+            continue;
+
+        case '*':
+        case '/':
+            t.tk = (ch == '*') ? T_STAR : T_DIV;
+            da_append(tokens, t);
+            continue;
         case CLOSING_CHR: {
             t.tk = T_CLOSING;
             da_append(tokens, t);
@@ -255,7 +266,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
         }
 
         if (isspace(ch) || match) {
-            if (sb.count > 0) { make_ident_or_n(tokens, &sb, line, col); }
+            if (sb.count > 0) make_ident_or_n(tokens, &sb, line, col);
             continue;
         }
 
@@ -263,9 +274,16 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens) {
     }
 
     /* NOTE: exhaust the last token */
-    if (sb.count > 0 && !isspace(sb.items[sb.count]) && sb.items[0] != 0) {
+    if (sb.count > 0 && sb.items[0] != 0) {
         make_ident_or_n(tokens, &sb, cur.line, cur.col);
     }
+
+    Token teof = {
+        .tk   = T_EOF,
+        .line = cur.line,
+        .col  = cur.col
+    };
+    da_append(tokens, teof);
 
     da_free(sb);
     return true;

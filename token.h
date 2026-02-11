@@ -32,7 +32,12 @@ typedef enum {
     T_FATARROW, // =>
     T_ARROW,    // ->
     T_COLON,    // :
-    T_BINOP,
+
+    // BINOP
+    T_MIN,      // -
+    T_PLUS,     // +
+    T_STAR,     // *
+    T_DIV,      // /
 
     T_LET,
     T_CONST,
@@ -46,7 +51,6 @@ typedef enum {
     T_CHR,
     T_STR,
     T_NUM,
-    T_UNUM,
     T_FLO,
 
     T_ERR,
