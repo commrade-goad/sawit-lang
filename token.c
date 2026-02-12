@@ -111,12 +111,19 @@ inline static void make_ident_or_n(Tokens *t, String_Builder *sb, SrcLoc loc) {
     double fbuf   = 0.0;
 
     // keyword stuff
+    bool is_keyword = false;
+    Token n = {0};
+    n.loc = loc;
+    n.loc.col -= strlen(tmp);
+
     if (strcmp(tmp, LET_STR) == 0) {
-        Token n = {
-            .tk   = T_LET,
-            .loc = loc,
-        };
-        n.loc.col -= strlen(tmp);
+        n.tk       = T_LET;
+        is_keyword = true;
+    } else if (strcmp(tmp, RETURN_STR) == 0) {
+        n.tk       = T_RETURN;
+        is_keyword = true;
+    }
+    if (is_keyword) {
         free(tmp);
         da_append(t, n);
         return;

@@ -24,7 +24,9 @@ int main(int argc, char **argv) {
     }
     Tokens tokens = {0};
     bool res = parse_tokens_v2(&sb, &tokens, file);
-    if (!res) return -1;
+    if (!res) {
+        goto cleanup;
+    }
     /*
     for (size_t i = 0; i < tokens.count; i++) {
         Token *tok = &tokens.items[i];
@@ -72,5 +74,10 @@ int main(int argc, char **argv) {
     for (size_t i = 0; i < program.count; i++) {
         print_stmt(program.items[i], 0);
     }
+    goto cleanup;
+
+ cleanup:
+    arena_deinit(&rarena);
+    da_free(tokens);
     return 0;
 }

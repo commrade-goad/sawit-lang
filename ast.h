@@ -22,6 +22,7 @@ typedef enum {
 typedef enum {
     STMT_EXPR,     // expression as statement: a + 5;
     STMT_LET,      // let a = expr;
+    STMT_RET,      // return
     STMT_BLOCK,    // { stmt1; stmt2; }
 } StmtType;
 

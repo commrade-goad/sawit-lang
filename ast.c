@@ -1,7 +1,7 @@
 #include "ast.h"
 #include "token.h"
 
-#define BIGGEST_POWER 30
+#define BIGGEST_POWER 40
 
 static Token *peek(Parser *p) {
     return &p->tokens->items[p->current];
@@ -228,6 +228,21 @@ static Expr *parse_expression(Parser *p, int min_bp) {
     return lhs;
 }
 
+// is this the correct way to impl return?
+static Stmt *parse_return(Parser *p) {
+    Stmt *stmt = make_stmt(STMT_RET, p->arena);
+
+    // allow: return;
+    if (!check(p, T_CLOSING)) {
+        stmt->as.expr.expr = parse_expression(p, 0);
+    } else {
+        stmt->as.expr.expr = NULL;
+    }
+
+    expect(p, T_CLOSING);
+    return stmt;
+}
+
 static Stmt *parse_let(Parser *p) {
     Token *name = peek(p);
     expect(p, T_IDENT);
@@ -266,6 +281,9 @@ static Stmt *parse_block(Parser *p) {
 static Stmt *parse_statement(Parser *p) {
     if (match(p, T_LET)) {
         return parse_let(p);
+    }
+    if (match(p, T_RETURN)) {
+        return parse_return(p);
     }
 
     if (match(p, T_OCPARENT)) {
@@ -344,6 +362,10 @@ void print_stmt(Stmt *s, int indent) {
     print_indent(indent);
 
     switch (s->type) {
+    case STMT_RET:
+        printf("RET\n");
+        if (s->as.expr.expr) print_expr(s->as.expr.expr, indent + 1);
+        break;
     case STMT_LET:
         printf("LET %s\n", s->as.let.name);
         print_expr(s->as.let.value, indent + 1);
