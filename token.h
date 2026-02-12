@@ -18,6 +18,7 @@
 #define EQUAL_CHR '='
 #define COLON_CHR ':'
 #define STRING_CHR '"'
+#define COMMA_CHR ','
 
 typedef enum {
     T_EOF = 0,
@@ -34,6 +35,8 @@ typedef enum {
     T_FATARROW, // =>
     T_ARROW,    // ->
     T_COLON,    // :
+    T_DCOLON,   // ::
+    T_COMMA,    // ,
 
     // BINOP
     T_MIN,      // -
@@ -55,6 +58,43 @@ typedef enum {
     T_NUM,
     T_FLO,
 } TokenKind;
+
+static inline const char *get_token_str(TokenKind tk) {
+    switch (tk) {
+    case T_EOF:      { return "T_EOF";     } break;
+    case T_OPARENT:  { return "T_OPARENT"; } break;
+    case T_CPARENT:  { return "T_CPARENT"; } break;
+    case T_OCPARENT: { return "T_OCPARENT";} break;
+    case T_CCPARENT: { return "T_CCPARENT";} break;
+    case T_OSPARENT: { return "T_OSPARENT";} break;
+    case T_CSPARENT: { return "T_CSPARENT";} break;
+    case T_CLOSING:  { return "T_CLOSING"; } break;
+    case T_EQUAL:    { return "T_EQUAL";   } break;
+    case T_FATARROW: { return "T_FATARROW";} break;
+    case T_ARROW:    { return "T_ARROW";   } break;
+    case T_COLON:    { return "T_COLON";   } break;
+    case T_DCOLON:   { return "T_DCOLON";  } break;
+    case T_COMMA:    { return "T_COMMA";   } break;
+    case T_MIN:      { return "T_MIN";     } break;
+    case T_PLUS:     { return "T_PLUS";    } break;
+    case T_STAR:     { return "T_STAR";    } break;
+    case T_DIV:      { return "T_DIV";     } break;
+    case T_LET:      { return "T_LET";     } break;
+    case T_CONST:    { return "T_CONST";   } break;
+    case T_RETURN:   { return "T_RETURN";  } break;
+    case T_IF:       { return "T_IF";      } break;
+    case T_ELSE:     { return "T_ELSE";    } break;
+    case T_STRUCT:   { return "T_STRUCT";  } break;
+    case T_ENUM:     { return "T_ENUM";    } break;
+    case T_IDENT:    { return "T_IDENT";   } break;
+    case T_CHR:      { return "T_CHR";     } break;
+    case T_STR:      { return "T_STR";     } break;
+    case T_NUM:      { return "T_NUM";     } break;
+    case T_FLO:      { return "T_FLO";     } break;
+    default:         { return "UNKNOWN";   } break;
+    }
+}
+
 
 typedef struct {
     TokenKind tk;

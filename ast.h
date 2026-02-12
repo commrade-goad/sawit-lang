@@ -15,6 +15,8 @@ typedef enum {
     AST_UNARY_OP,      // something like -5 +2 *a so operator to 1 num
     AST_BINARY_OP,     // lhs [SOMETHING] rhs
     AST_ASSIGN,
+    AST_FUNCTION,
+    AST_CALL,
 } ExprType;
 
 typedef enum {
@@ -32,6 +34,24 @@ typedef struct {
     size_t count;
     size_t capacity;
 } Statements;
+
+typedef struct {
+    char **items;
+    size_t count;
+    size_t capacity;
+} Params;
+
+typedef struct {
+    Expr **items;
+    size_t count;
+    size_t capacity;
+} Args;
+
+typedef struct {
+    Tokens *tokens;
+    size_t current;
+    Arena *arena;
+} Parser;
 
 struct Stmt {
     StmtType type;
@@ -78,6 +98,19 @@ struct Expr {
             char *name;
             Expr *value;
         } assign;
+
+        // function
+        struct {
+            Params params;
+            Stmt *body;   // must be block
+        } function;
+
+        // function call
+        struct {
+            Expr *callee;
+            Args args;
+            size_t arg_count;
+        } call;
 
         // Binary Op (e.g., 5 + 5)
         struct {

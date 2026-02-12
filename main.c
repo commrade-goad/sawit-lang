@@ -25,46 +25,48 @@ int main(int argc, char **argv) {
     Tokens tokens = {0};
     bool res = parse_tokens_v2(&sb, &tokens, file);
     if (!res) return -1;
-    // for (size_t i = 0; i < tokens.count; i++) {
-    //     Token *tok = &tokens.items[i];
-    //     printf("Token kind: %d -> ", tok->tk);
-    //
-    //     switch (tok->tk) {
-    //     case T_IDENT:
-    //     case T_STR:
-    //         printf("%s", tok->data.String);
-    //         break;
-    //     case T_NUM:
-    //         printf("%lu", tok->data.Uint64);
-    //         break;
-    //     case T_FLO:
-    //         printf("%f", tok->data.F64);
-    //         break;
-    //     case T_EQUAL:
-    //         printf("=");
-    //         break;
-    //     case T_OPARENT:
-    //         printf("(");
-    //         break;
-    //     case T_CPARENT:
-    //         printf(")");
-    //         break;
-    //     case T_OCPARENT:
-    //         printf("{");
-    //         break;
-    //     case T_CCPARENT:
-    //         printf("}");
-    //         break;
-    //     case T_CLOSING:
-    //         printf("; (CLOSING)");
-    //         break;
-    //     default:
-    //         printf("(symbol)");
-    //         break;
-    //     }
-    //
-    //     printf("\n");
-    // }
+    /*
+    for (size_t i = 0; i < tokens.count; i++) {
+        Token *tok = &tokens.items[i];
+        printf("Pos: %s:%lu:%lu - Token kind: %d -> ", tok->loc.name, tok->loc.line, tok->loc.col, tok->tk);
+
+        switch (tok->tk) {
+        case T_IDENT:
+        case T_STR:
+            printf("%s", tok->data.String);
+            break;
+        case T_NUM:
+            printf("%lu", tok->data.Uint64);
+            break;
+        case T_FLO:
+            printf("%f", tok->data.F64);
+            break;
+        case T_EQUAL:
+            printf("=");
+            break;
+        case T_OPARENT:
+            printf("(");
+            break;
+        case T_CPARENT:
+            printf(")");
+            break;
+        case T_OCPARENT:
+            printf("{");
+            break;
+        case T_CCPARENT:
+            printf("}");
+            break;
+        case T_CLOSING:
+            printf("; (CLOSING)");
+            break;
+        default:
+            printf("(symbol)");
+            break;
+        }
+
+        printf("\n");
+    }
+    */
     Statements program = {0};
     make_ast(&rarena, &program, &tokens);
     for (size_t i = 0; i < program.count; i++) {

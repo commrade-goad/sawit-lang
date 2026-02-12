@@ -5,6 +5,6 @@ let a = 10;
     let b = 5;
     a = a + b;
 }
-a;
 
-let a = 10 * (20 + 3);
+let add = (a,b) :: { a + b; };
+add(a, (b + 1), c);

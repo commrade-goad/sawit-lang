@@ -197,6 +197,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
         switch (ch) {
         case '*':
         case '/':
+        case COMMA_CHR:
         case STRING_CHR: // "
         case CLOSING_CHR:
         case EQUAL_CHR:
@@ -300,8 +301,17 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             t.tk = T_CCPARENT;
             da_append(tokens, t);
         } break;
+        case COMMA_CHR: {
+            t.tk = T_COMMA;
+            da_append(tokens, t);
+        } break;
         case COLON_CHR: {
             t.tk = T_COLON;
+            char *nc = peek(&cur, 0);
+            if (nc && *nc == COLON_CHR) {
+                t.tk = T_DCOLON;
+                next(&cur);
+            }
             da_append(tokens, t);
         } break;
         default: { match = false; } break;
@@ -322,7 +332,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
 
     Token teof = {
         .tk   = T_EOF,
-        .loc = (SrcLoc) { name, (size_t)cur.line, (size_t)cur.col },
+        .loc = (SrcLoc) { name, cur.line, 1 },
     };
     da_append(tokens, teof);
 

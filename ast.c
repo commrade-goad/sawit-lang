@@ -3,12 +3,6 @@
 
 #define BIGGEST_POWER 30
 
-typedef struct {
-    Tokens *tokens;
-    size_t current;
-    Arena *arena;
-} Parser;
-
 static Token *peek(Parser *p) {
     return &p->tokens->items[p->current];
 }
@@ -42,7 +36,7 @@ static bool match(Parser *p, TokenKind kind) {
 static void expect(Parser *p, TokenKind kind) {
     Token *cr = peek(p);
     if (!match(p, kind)) {
-        perr("%s:%lu:%lu: Expected token %d, got %d", cr->loc.name, cr->loc.line, cr->loc.col, kind, cr->tk);
+        perr("%s:%lu:%lu: Expected token %s, got %s", cr->loc.name, cr->loc.line, cr->loc.col, get_token_str(kind), get_token_str(cr->tk));
         exit(1);
     }
 }
@@ -78,15 +72,24 @@ static int infix_binding_power(TokenKind tk, int *left_bp, int *right_bp) {
         *right_bp = 4;
         return 1;
 
+    case T_OPARENT:
+        *left_bp = 30;
+        *right_bp = 31;
+        return 1;
+
     default:
         return 0;
     }
 }
 
+static Stmt *parse_statement(Parser *p);
+static Stmt *parse_let(Parser *p);
+static Stmt *parse_block(Parser *p);
+
 static Expr *parse_expression(Parser *p, int min_bp) {
     Expr *lhs;
 
-    // ----- Prefix -----
+    // Prefix
     Token *tok = advance(p);
 
     switch (tok->tk) {
@@ -111,8 +114,40 @@ static Expr *parse_expression(Parser *p, int min_bp) {
     } break;
 
     case T_OPARENT: {
-        lhs = parse_expression(p, 0);
-        expect(p, T_CPARENT);
+        size_t saved = p->current;
+        bool is_param_list = true;
+        Params params = {0};
+        SrcLoc loc = p->tokens->items[p->current].loc;
+
+        if (!check(p, T_CPARENT)) {
+            do {
+                if (!check(p, T_IDENT)) {
+                    is_param_list = false;
+                    break;
+                }
+
+                Token *name = advance(p);
+                da_append(&params, name->data.String);
+
+            } while (match(p, T_COMMA));
+        }
+        if (is_param_list && match(p, T_CPARENT) && check(p, T_DCOLON)) {
+            advance(p); // consume ::
+
+            expect(p, T_OCPARENT);
+            Stmt *body = parse_block(p);
+
+            lhs = make_expr(AST_FUNCTION, p->arena);
+            lhs->as.function.body = body;
+            lhs->as.function.params = params;
+            lhs->loc = loc;
+        } else {
+            // rollback
+            p->current = saved;
+
+            lhs = parse_expression(p, 0);
+            expect(p, T_CPARENT);
+        }
     } break;
 
     case T_MIN: { // unary minus
@@ -123,12 +158,16 @@ static Expr *parse_expression(Parser *p, int min_bp) {
         lhs->as.unary.right = rhs;
     } break;
 
-    default:
-        fprintf(stderr, "Unexpected token in expression\n");
+    default: {
+        Token current_token = p->tokens->items[p->current];
+        perr("%s:%lu:%lu: Unexpected token in expression: %s",
+             current_token.loc.name, current_token.loc.line,
+             current_token.loc.col, get_token_str(current_token.tk));
         exit(1);
+    } break;
     }
 
-    // ----- Infix Loop -----
+    // Infix Loop
     while (1) {
         Token *next = peek(p);
         int left_bp, right_bp;
@@ -138,9 +177,30 @@ static Expr *parse_expression(Parser *p, int min_bp) {
         if (left_bp < min_bp)
             break;
 
+        if (next->tk == T_OPARENT) {
+            advance(p); // consume '('
+
+            Args args = {0};
+
+            if (!check(p, T_CPARENT)) {
+                do {
+                    Expr *arg = parse_expression(p, 0);
+                    da_append(&args, arg);
+                } while (match(p, T_COMMA));
+            }
+
+            expect(p, T_CPARENT);
+
+            Expr *call = make_expr(AST_CALL, p->arena);
+            call->as.call.callee = lhs;
+            call->as.call.args = args;
+
+            lhs = call;
+            continue;
+        }
+
         TokenKind op = next->tk;
         advance(p);
-
         Expr *rhs = parse_expression(p, right_bp);
 
         if (op == T_EQUAL) {
@@ -167,11 +227,6 @@ static Expr *parse_expression(Parser *p, int min_bp) {
 
     return lhs;
 }
-
- /* C BULLSHIT */
-static Stmt *parse_statement(Parser *p);
-static Stmt *parse_let(Parser *p);
-static Stmt *parse_block(Parser *p);
 
 static Stmt *parse_let(Parser *p) {
     Token *name = peek(p);
@@ -264,6 +319,23 @@ void print_expr(Expr *e, int indent) {
     case AST_ASSIGN:
         printf("ASSIGN(%s)\n", e->as.assign.name);
         print_expr(e->as.assign.value, indent + 1);
+        break;
+
+    case AST_FUNCTION:
+        printf("FUNCTION\n");
+        for (size_t i = 0; i < e->as.function.params.count; i++) {
+            print_indent(indent + 1);
+            printf("PARAM(%s)\n", e->as.function.params.items[i]);
+        }
+        print_stmt(e->as.function.body, indent + 1);
+        break;
+
+    case AST_CALL:
+        printf("CALL\n");
+        print_expr(e->as.call.callee, indent + 1);
+        for (size_t i = 0; i < e->as.call.args.count; i++) {
+            print_expr(e->as.call.args.items[i], indent + 1);
+        }
         break;
     }
 }
