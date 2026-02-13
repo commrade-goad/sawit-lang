@@ -1,14 +1,14 @@
 // for the future block will be expr
 // so `let a = { a + 20 };` is possible but not for now.
-// let a = 10;
-// {
-//     let b = 5;
-//     a = a + b;
-// }
+let a = 10;
+{
+    let b = 5;
+    a = a + b;
+}
 
-// let foo = (a any) :: void {
-//     return;
-// };
+let foo = (a any) :: void {
+    return;
+};
 
 // let Animal = type {};
 // Animal :: {};
@@ -24,8 +24,10 @@ let min = 10;
 }
 min = 20;
 
-// let x s32 = add(10, 12);
-// let y = 20;
+let x s32 = add(10, 12);
+let y = 20;
 
 add(10, 20);
-let add = void;
+
+let stuff =
+"hello";

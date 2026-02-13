@@ -8,6 +8,8 @@ static Cmd cmd = {0};
 static void cflags(Cmd *cmd) {
     cmd_append(cmd, "-Wall");
     cmd_append(cmd, "-Wextra");
+    /* cmd_append(cmd, "-O2"); */
+    /* cmd_append(cmd, "-march=native"); */
     cmd_append(cmd, "-ggdb");
 }
 

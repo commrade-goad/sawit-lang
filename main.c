@@ -48,27 +48,46 @@ int main(int argc, char **argv) {
     if (arena_init(&rarena, ARENA_DEFAULT_SIZE) != 0) {
         perr_exit("Failed to allocate the runtime stack arena `%s`", strerror(errno));
     }
+
+    // == TOKENIZING
     Tokens tokens = {0};
-    // @TODO: add timer
+
+    long long start = current_time_ns();
     bool res = parse_tokens_v2(&sb, &tokens, file);
+    long long end = current_time_ns();
+
     if (!res) {
         goto cleanup;
     }
 
+    double elapsed_ms = (double)(end - start) / 1e6;
+    printf("Token parsing     : %.3f ms\n", elapsed_ms);
+
     // print_token(&tokens);
 
 
-    // @TODO: add timer
+    // == AST-ING
     Statements program = {0};
+    start = current_time_ns();
     if (!make_ast(&rarena, &program, &tokens)) { goto cleanup; }
+    end = current_time_ns();
+    elapsed_ms = (double)(end - start) / 1e6;
+    printf("AST parsing       : %.3f ms\n", elapsed_ms);
 
-    /* for (size_t i = 0; i < program.count; i++) { */
-    /*     print_stmt(program.items[i], 0); */
-    /* } */
+    // for (size_t i = 0; i < program.count; i++) {
+    //     print_stmt(program.items[i], 0);
+    // }
 
+    // == SEMANTIC CHECKING
     Semantic semantic = {0};
     semantic.arena = &rarena;
+
+    start = current_time_ns();
     semantic_check(&semantic, &program);
+    end = current_time_ns();
+    elapsed_ms = (double)(end - start) / 1e6;
+    printf("Semantic Checking : %.3f ms\n", elapsed_ms);
+
     goto cleanup;
 
  cleanup:

@@ -227,22 +227,22 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
 
                 if (!p) {
                     ret = false;
-                    perr("%s:%lu:%lu: Unexpected EOF in string", currentloc.name, currentloc.line, currentloc.col);
-                    break;
+                    log_error(currentloc, "Unexpected EOF in string");
+                    return false;
                 }
                 if (*p == STRING_CHR) break;
                 if (*p == '\n') {
                     ret = false;
-                    perr("%s:%lu:%lu: Unclosed string blocks", currentloc.name, currentloc.line, currentloc.col);
-                    break;
+                    log_error(currentloc, "Unclosed string blocks");
+                    return false;
                 }
 
                 if (*p == '\\') {
                     char *esc = next(&cur);
                     if (!esc) {
                         ret = false;
-                        perr("%s:%lu:%lu: trailing backslash at end of file", currentloc.name, currentloc.line, currentloc.col);
-                        break;
+                        log_error(currentloc,"trailing backslash at end of file");
+                        return false;
                     }
 
                     switch (*esc) {
