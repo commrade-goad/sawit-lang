@@ -3,7 +3,7 @@
 #undef ARENA_IMPLEMENTATION
 
 #include "utils.h"
-#include "token.h"
+#include "lexer.h"
 #include "ast.h"
 
 static inline void print_token(Tokens *tokens) {
@@ -63,6 +63,7 @@ int main(int argc, char **argv) {
 
  cleanup:
     arena_deinit(&rarena);
+    tokens_deinit(&tokens);
     da_free(tokens);
     return 0;
 }

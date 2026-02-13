@@ -1,6 +1,7 @@
 #ifndef ARENA_H
 #define ARENA_H
 
+// @TODO: add way to flag that mem size is free to overwrite.
 #include <stdlib.h>
 
 #define ARENA_DEFAULT_SIZE 4096

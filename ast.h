@@ -3,7 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#include "token.h"
+#include "lexer.h"
 #include "arena.h"
 #include "utils.h"
 

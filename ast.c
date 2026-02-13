@@ -1,5 +1,5 @@
 #include "ast.h"
-#include "token.h"
+#include "lexer.h"
 
 #define BIGGEST_POWER 40
 #define LOC_FORMAT "%s:%lu:%lu: "
