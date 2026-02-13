@@ -124,7 +124,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
         size_t saved = p->current;
         bool is_param_list = true;
         Params params = {0};
-        SrcLoc loc = p->tokens->items[p->current].loc;
+        Token *before = previous(p);
 
         if (!check(p, T_CPARENT)) {
             do {
@@ -174,7 +174,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
             }
             lhs->as.function.body = body;
             lhs->as.function.params = params;
-            lhs->loc = loc;
+            lhs->loc = before->loc;
         } else {
             // rollback
             p->current = saved;
@@ -212,6 +212,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
             break;
 
         if (next->tk == T_OPARENT) {
+            Token *before = previous(p);
             advance(p); // consume '('
 
             Args args = {0};
@@ -228,7 +229,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
             Expr *call = make_expr(AST_CALL, p->arena);
             call->as.call.callee = lhs;
             call->as.call.args = args;
-            call->loc = next->loc;
+            call->loc = before->loc;
 
             lhs = call;
             continue;
@@ -378,6 +379,7 @@ void print_expr(Expr *e, int indent) {
         printf("FLOAT(%f)\n", e->as.float_val);
         break;
 
+    // @NOTE: this is after the quote so yeah be mindful of this
     case AST_LITERAL_STRING:
         printf("STRING(%s)\n", e->as.identifier);
         break;
@@ -402,7 +404,6 @@ void print_expr(Expr *e, int indent) {
         break;
 
     case AST_FUNCTION:
-        // @TODO: the loc is wrong it should be in the first `(` not the first `ident`
         printf("FUNCTION(%s)\n", e->as.function.ret);
         for (size_t i = 0; i < e->as.function.params.count; i++) {
             print_indent(indent + 1);
@@ -435,7 +436,6 @@ void print_stmt(Stmt *s, int indent) {
         print_expr(s->as.let.value, indent + 1);
         break;
 
-    // @TODO: another loc bug that originated from the expr.
     case STMT_EXPR:
         printf("EXPR_STMT\n");
         print_expr(s->as.expr.expr, indent + 1);
