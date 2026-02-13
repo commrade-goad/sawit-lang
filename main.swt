@@ -6,8 +6,15 @@
 //     a = a + b;
 // }
 
+let foo = (a any) :: void {
+    return;
+};
 
-let min = (a,b) :: { return; };
-let add = (a,b) :: { return a + b; };
-let y = (5 + 3) * 2;
-let x = add(10, 12);
+let add = (a s32, b s32) :: s32 {
+    return a + b;
+};
+
+let x s32 = add(10, 12);
+let y = 20;
+
+add(10,20);

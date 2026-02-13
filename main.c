@@ -6,6 +6,31 @@
 #include "token.h"
 #include "ast.h"
 
+static inline void print_token(Tokens *tokens) {
+    for (size_t i = 0; i < tokens->count; i++) {
+        Token *tok = &tokens->items[i];
+        printf("%s:%lu:%lu: %s :: ", tok->loc.name, tok->loc.line, tok->loc.col, get_token_str(tok->tk));
+
+        switch (tok->tk) {
+        case T_IDENT:
+        case T_STR:
+            printf("%s", tok->data.String);
+            break;
+        case T_NUM:
+            printf("%lu", tok->data.Uint64);
+            break;
+        case T_FLO:
+            printf("%f", tok->data.F64);
+            break;
+        default:
+            printf("(NONE)");
+            break;
+        }
+
+        printf("\n");
+    }
+}
+
 int main(int argc, char **argv) {
     if (argc <= 1) perr_exit("Not enought args");
 
@@ -27,50 +52,10 @@ int main(int argc, char **argv) {
     if (!res) {
         goto cleanup;
     }
-    /*
-    for (size_t i = 0; i < tokens.count; i++) {
-        Token *tok = &tokens.items[i];
-        printf("Pos: %s:%lu:%lu - Token kind: %d -> ", tok->loc.name, tok->loc.line, tok->loc.col, tok->tk);
-
-        switch (tok->tk) {
-        case T_IDENT:
-        case T_STR:
-            printf("%s", tok->data.String);
-            break;
-        case T_NUM:
-            printf("%lu", tok->data.Uint64);
-            break;
-        case T_FLO:
-            printf("%f", tok->data.F64);
-            break;
-        case T_EQUAL:
-            printf("=");
-            break;
-        case T_OPARENT:
-            printf("(");
-            break;
-        case T_CPARENT:
-            printf(")");
-            break;
-        case T_OCPARENT:
-            printf("{");
-            break;
-        case T_CCPARENT:
-            printf("}");
-            break;
-        case T_CLOSING:
-            printf("; (CLOSING)");
-            break;
-        default:
-            printf("(symbol)");
-            break;
-        }
-
-        printf("\n");
-    }
-    */
+    // print_token(&tokens);
     Statements program = {0};
-    make_ast(&rarena, &program, &tokens);
+    if (!make_ast(&rarena, &program, &tokens)) { goto cleanup; }
+
     for (size_t i = 0; i < program.count; i++) {
         print_stmt(program.items[i], 0);
     }

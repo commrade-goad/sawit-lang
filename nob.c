@@ -1,6 +1,6 @@
 #define NOB_IMPLEMENTATION
 #define NOB_STRIP_PREFIX
-#define PROG_NAME "qlang"
+#define PROG_NAME "sawit"
 #include "nob.h"
 
 static Cmd cmd = {0};
@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
     cmd_append(&cmd, "ast.c");
     cmd_append(&cmd, "main.c");
 
-    cmd_run(&cmd);
+    if (!cmd_run(&cmd)) return 1;
 
     bool run = false;
     if (argc >= 2) {

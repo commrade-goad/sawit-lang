@@ -37,7 +37,12 @@ typedef struct {
 } Statements;
 
 typedef struct {
-    char **items;
+    char *name;
+    char *type;
+} Param;
+
+typedef struct {
+    Param* items;
     size_t count;
     size_t capacity;
 } Params;
@@ -49,9 +54,16 @@ typedef struct {
 } Args;
 
 typedef struct {
+    String_View *items;
+    size_t count;
+    size_t capacity;
+} Errors;
+
+typedef struct {
     Tokens *tokens;
     size_t current;
     Arena *arena;
+    Errors errors;
 } Parser;
 
 struct Stmt {
@@ -67,6 +79,7 @@ struct Stmt {
         // let a = expr;
         struct {
             char *name;
+            char *type;
             Expr *value;
         } let;
 
@@ -102,6 +115,7 @@ struct Expr {
 
         // function
         struct {
+            char *ret;
             Params params;
             Stmt *body;   // must be block
         } function;
@@ -110,7 +124,6 @@ struct Expr {
         struct {
             Expr *callee;
             Args args;
-            size_t arg_count;
         } call;
 
         // Binary Op (e.g., 5 + 5)
@@ -124,7 +137,7 @@ struct Expr {
 
 Expr *make_expr(ExprType type, Arena *a);
 Stmt *make_stmt(StmtType type, Arena *a);
-void make_ast(Arena *a, Statements *stmts, Tokens *t);
+bool make_ast(Arena *a, Statements *stmts, Tokens *t);
 void print_stmt(Stmt *s, int indent);
 
 #endif // EXPR_H
