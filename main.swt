@@ -1,26 +1,22 @@
 // for the future block will be expr
 // so `let a = { a + 20 };` is possible but not for now.
-let a = 10;
-{
-    let b = 5;
-    a = a + b;
-}
+// let a = 10;
+// {
+//     let b = 5;
+//     a = a + b;
+// }
 
-let foo = (a any) :: void {
-    return;
-};
+// let foo = (a any) -> void {
+//     return;
+// };
 
-// let Animal = type {};
-// Animal :: {};
-// type Animal {};
-
-let add = (a s32, b s32) :: s32 {
+let add = (a s32, b s32) -> s32 {
     return a + b;
 };
 
 let min = 10;
 {
-    let min = () :: void { };
+    let min = () -> void { };
 }
 min = 20;
 
@@ -31,3 +27,28 @@ add(10, 20);
 
 let stuff =
 "hello";
+
+
+// struct
+// Animal :: type {};
+
+// enum
+// Color :: enum {};
+
+// if & for (no while!)
+// `if (a)` or `if (a) stmt/expr`
+// `for (let i = 0; i < something; i += 1)`
+// `something.for((i, o) :: { do_something() })`
+
+// if behaving like while
+// `for ;; {}`
+// `for ;something != someone; something.next() {}`
+
+// generic like this?
+// so the type with that <?> will be generated when there is atype requested it
+// Vec :: type<T> {
+//     items    <T>[];
+//     count    u64;
+//     capacity u64;
+//     for      fn( *Vec, fn( u64, *<T> )void )*Vec;
+// };

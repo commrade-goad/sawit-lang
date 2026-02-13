@@ -267,7 +267,16 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             continue;
         }
         case PLUS_CHR:
-        case MIN_CHR:
+        case MIN_CHR: {
+            // trying to see if its arrow
+            char *next_char = peek(&cur, 0);
+            if (next_char && *next_char == '>') {
+                p = next(&cur);
+                t.tk = T_ARROW;
+                da_append(tokens, t);
+                continue;
+            }
+
             // SCIENTIFIC NOTATION CHECK:
             if (sb.count > 0 && (toupper(sb.items[sb.count-1]) == 'E')) {
                 sb_appendf(&sb, "%c", ch);
@@ -278,7 +287,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             t.tk = (ch == '+') ? T_PLUS : T_MIN;
             da_append(tokens, t);
             continue;
-
+        } break;
         case STAR_CHR:
         case DIV_CHR:
             t.tk = (ch == '*') ? T_STAR : T_DIV;

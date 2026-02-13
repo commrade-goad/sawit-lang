@@ -9,6 +9,10 @@
 
 #define LET_STR "let"
 #define TYPE_STR "type"
+#define CONTINUE_STR "continue"
+#define BREAK_STR "break"
+#define IF_STR "if"
+#define FOR_STR "for"
 #define RETURN_STR "return"
 #define STAR_CHR '*'
 #define DIV_CHR '/'

@@ -150,8 +150,9 @@ static Expr *parse_expression(Parser *p, int min_bp) {
 
             } while (match(p, T_COMMA));
         }
-        if (is_param_list && match(p, T_CPARENT) && check(p, T_DCOLON)) {
-            advance(p); // consume ::
+
+        if (is_param_list && match(p, T_CPARENT) && check(p, T_ARROW)) {
+            advance(p); // consume ->
 
             Token *retval = NULL;
 
