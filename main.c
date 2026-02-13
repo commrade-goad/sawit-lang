@@ -5,6 +5,7 @@
 #include "utils.h"
 #include "lexer.h"
 #include "ast.h"
+#include "semantic.h"
 
 static inline void print_token(Tokens *tokens) {
     for (size_t i = 0; i < tokens->count; i++) {
@@ -52,13 +53,18 @@ int main(int argc, char **argv) {
     if (!res) {
         goto cleanup;
     }
+
     // print_token(&tokens);
+
     Statements program = {0};
     if (!make_ast(&rarena, &program, &tokens)) { goto cleanup; }
 
-    for (size_t i = 0; i < program.count; i++) {
-        print_stmt(program.items[i], 0);
-    }
+    /* for (size_t i = 0; i < program.count; i++) { */
+    /*     print_stmt(program.items[i], 0); */
+    /* } */
+
+    Semantic semantic = {0};
+    semantic_init(&semantic);
     goto cleanup;
 
  cleanup:

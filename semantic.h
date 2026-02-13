@@ -4,13 +4,8 @@
 #define NOB_STRIP_PREFIX
 #include "nob.h"
 #include "arena.h"
+#include "utils.h"
 #include <stdbool.h>
-
-typedef struct {
-    String_View *items;
-    size_t count;
-    size_t capacity;
-} Errors;
 
 typedef struct Type {
     char *name;  // "s32", "void", "MyStruct", etc.

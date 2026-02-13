@@ -202,8 +202,8 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
         t.loc = currentloc;
 
         switch (ch) {
-        case '*':
-        case '/':
+        case STAR_CHR:
+        case DIV_CHR:
         case COMMA_CHR:
         case STRING_CHR: // "
         case CLOSING_CHR:
@@ -266,8 +266,8 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             da_append(tokens, t);
             continue;
         }
-        case '+':
-        case '-':
+        case PLUS_CHR:
+        case MIN_CHR:
             // SCIENTIFIC NOTATION CHECK:
             if (sb.count > 0 && (toupper(sb.items[sb.count-1]) == 'E')) {
                 sb_appendf(&sb, "%c", ch);
@@ -279,8 +279,8 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             da_append(tokens, t);
             continue;
 
-        case '*':
-        case '/':
+        case STAR_CHR:
+        case DIV_CHR:
             t.tk = (ch == '*') ? T_STAR : T_DIV;
             da_append(tokens, t);
             continue;

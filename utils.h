@@ -10,6 +10,12 @@ typedef struct {
     size_t col;
 } SrcLoc;
 
+typedef struct {
+    char **items;
+    size_t count;
+    size_t capacity;
+} Errors;
+
 #define perr_exit(fmt, ...)\
     do { fprintf(stderr, "ERROR: " fmt "\n", ##__VA_ARGS__); exit(1); } while(0)
 

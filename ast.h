@@ -54,12 +54,6 @@ typedef struct {
 } Args;
 
 typedef struct {
-    String_View *items;
-    size_t count;
-    size_t capacity;
-} Errors;
-
-typedef struct {
     Tokens *tokens;
     size_t current;
     Arena *arena;

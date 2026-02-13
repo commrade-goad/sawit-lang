@@ -39,7 +39,7 @@ static void expect(Parser *p, TokenKind kind) {
     Token *cr = peek(p);
     if (!match(p, kind)) {
         char *stuff = temp_sprintf(LOC_FORMAT"Expected token %s, got %s", LOC_DATA(cr), get_token_str(kind), get_token_str(cr->tk));
-        da_append(&p->errors, sv_from_cstr(stuff));
+        da_append(&p->errors, strdup(stuff));
     }
 }
 
@@ -141,7 +141,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
                     advance(p);
                 } else {
                     char *stuff = temp_sprintf(LOC_FORMAT"Expecting the parameter type after the name.", LOC_DATA(name));
-                    da_append(&p->errors, sv_from_cstr(stuff));
+                    da_append(&p->errors, strdup(stuff));
                 }
                 Param p = {
                     .name = name->data.String,
@@ -197,7 +197,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
         Token current_token = p->tokens->items[p->current];
 
         char *stuff = temp_sprintf(LOC_FORMAT"Unexpected token in expression: %s", LOC_DATA((&current_token)), get_token_str(current_token.tk));
-        da_append(&p->errors, sv_from_cstr(stuff));
+        da_append(&p->errors, strdup(stuff));
     } break;
     }
 
@@ -295,7 +295,7 @@ static Stmt *parse_let(Parser *p, Token *kw) {
         Token *cr = peek(p);
         advance(p);
         char *stuff = temp_sprintf(LOC_FORMAT"Uninitialized let bindings is not supported!", LOC_DATA(cr));
-        da_append(&p->errors, sv_from_cstr(stuff));
+        da_append(&p->errors, strdup(stuff));
         return NULL;
     }
     expect(p, T_EQUAL);
@@ -462,7 +462,8 @@ bool make_ast(Arena *a, Statements *stmts, Tokens *t) {
     }
     if (p.errors.count > 0) {
         for(size_t i = 0; i < p.errors.count; i++) {
-            perr(SV_Fmt, SV_Arg(p.errors.items[i]));
+            perr("%s", p.errors.items[i]);
+            free(p.errors.items[i]);
         }
         return false;
     }
