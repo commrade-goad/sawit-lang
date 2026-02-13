@@ -57,7 +57,6 @@ typedef struct {
     Tokens *tokens;
     size_t current;
     Arena *arena;
-    Errors errors;
 } Parser;
 
 struct Stmt {

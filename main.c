@@ -49,6 +49,7 @@ int main(int argc, char **argv) {
         perr_exit("Failed to allocate the runtime stack arena `%s`", strerror(errno));
     }
     Tokens tokens = {0};
+    // @TODO: add timer
     bool res = parse_tokens_v2(&sb, &tokens, file);
     if (!res) {
         goto cleanup;
@@ -56,6 +57,8 @@ int main(int argc, char **argv) {
 
     // print_token(&tokens);
 
+
+    // @TODO: add timer
     Statements program = {0};
     if (!make_ast(&rarena, &program, &tokens)) { goto cleanup; }
 
@@ -64,7 +67,8 @@ int main(int argc, char **argv) {
     /* } */
 
     Semantic semantic = {0};
-    semantic_init(&semantic);
+    semantic.arena = &rarena;
+    semantic_check(&semantic, &program);
     goto cleanup;
 
  cleanup:

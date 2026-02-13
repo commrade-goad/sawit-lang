@@ -8,8 +8,7 @@
 #include "utils.h"
 
 #define LET_STR "let"
-// @NOTE: this is just for normal struct it just easier to type class
-#define CLASS_STR "class"
+#define TYPE_STR "type"
 #define RETURN_STR "return"
 #define STAR_CHR '*'
 #define DIV_CHR '/'

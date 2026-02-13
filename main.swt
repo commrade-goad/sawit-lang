@@ -10,11 +10,22 @@
 //     return;
 // };
 
+// let Animal = type {};
+// Animal :: {};
+// type Animal {};
+
 let add = (a s32, b s32) :: s32 {
     return a + b;
 };
+
+let min = 10;
+{
+    let min = () :: void { };
+}
+min = 20;
 
 // let x s32 = add(10, 12);
 // let y = 20;
 
 add(10, 20);
+let add = void;

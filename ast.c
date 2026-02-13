@@ -2,8 +2,6 @@
 #include "lexer.h"
 
 #define BIGGEST_POWER 40
-#define LOC_FORMAT "%s:%lu:%lu: "
-#define LOC_DATA(data) data->loc.name, data->loc.line, data->loc.col
 
 static Token *peek(Parser *p) {
     return &p->tokens->items[p->current];
@@ -35,12 +33,13 @@ static bool match(Parser *p, TokenKind kind) {
     return false;
 }
 
-static void expect(Parser *p, TokenKind kind) {
+static bool expect(Parser *p, TokenKind kind) {
     Token *cr = peek(p);
     if (!match(p, kind)) {
-        char *stuff = temp_sprintf(LOC_FORMAT"Expected token %s, got %s", LOC_DATA(cr), get_token_str(kind), get_token_str(cr->tk));
-        da_append(&p->errors, strdup(stuff));
+        log_error(cr->loc, "Expected token %s, got %s", get_token_str(kind), get_token_str(cr->tk));
+        return false;
     }
+    return true;
 }
 
 Expr *make_expr(ExprType type, Arena *a) {
@@ -140,8 +139,8 @@ static Expr *parse_expression(Parser *p, int min_bp) {
                     typename = peek(p);
                     advance(p);
                 } else {
-                    char *stuff = temp_sprintf(LOC_FORMAT"Expecting the parameter type after the name.", LOC_DATA(name));
-                    da_append(&p->errors, strdup(stuff));
+                    log_error(name->loc, "Expecting the parameter type after the name.");
+                    return NULL;
                 }
                 Param p = {
                     .name = name->data.String,
@@ -162,7 +161,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
                 advance(p);
             }
 
-            expect(p, T_OCPARENT);
+            if (!expect(p, T_OCPARENT)) return NULL;
             Token *kw = previous(p);
             Stmt *body = parse_block(p, kw);
 
@@ -180,7 +179,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
             p->current = saved;
 
             lhs = parse_expression(p, 0);
-            expect(p, T_CPARENT);
+            if (!expect(p, T_CPARENT)) return NULL;
         }
     } break;
 
@@ -196,8 +195,8 @@ static Expr *parse_expression(Parser *p, int min_bp) {
     default: {
         Token current_token = p->tokens->items[p->current];
 
-        char *stuff = temp_sprintf(LOC_FORMAT"Unexpected token in expression: %s", LOC_DATA((&current_token)), get_token_str(current_token.tk));
-        da_append(&p->errors, strdup(stuff));
+        log_error(current_token.loc, "Unexpected token in expression: %s", get_token_str(current_token.tk));
+        return NULL;
     } break;
     }
 
@@ -224,7 +223,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
                 } while (match(p, T_COMMA));
             }
 
-            expect(p, T_CPARENT);
+            if (!expect(p, T_CPARENT)) return NULL;
 
             Expr *call = make_expr(AST_CALL, p->arena);
             call->as.call.callee = lhs;
@@ -241,9 +240,8 @@ static Expr *parse_expression(Parser *p, int min_bp) {
 
         if (op == T_EQUAL) {
             if (lhs->type != AST_IDENTIFIER) {
-                // @TODO: change this to the new stuff
-                fprintf(stderr, "Invalid assignment target\n");
-                exit(1);
+                log_error(lhs->loc, "Invalid assignment target expected identifier.");
+                return NULL;
             }
 
             Expr *assign = make_expr(AST_ASSIGN, p->arena);
@@ -277,32 +275,25 @@ static Stmt *parse_return(Parser *p, Token *kw) {
         stmt->as.expr.expr = NULL;
     }
 
-    expect(p, T_CLOSING);
+    if (!expect(p, T_CLOSING)) return NULL;
     return stmt;
 }
 
 static Stmt *parse_let(Parser *p, Token *kw) {
     Token *name = peek(p);
-    expect(p, T_IDENT);
+    if (!expect(p, T_IDENT)) return NULL;
 
     Token *lettype = NULL;
     if (check(p, T_IDENT)) {
         lettype = peek(p);
-        expect(p, T_IDENT);
+        if (!expect(p, T_IDENT)) return NULL;
     }
 
-    if (!check(p, T_EQUAL)) {
-        Token *cr = peek(p);
-        advance(p);
-        char *stuff = temp_sprintf(LOC_FORMAT"Uninitialized let bindings is not supported!", LOC_DATA(cr));
-        da_append(&p->errors, strdup(stuff));
-        return NULL;
-    }
-    expect(p, T_EQUAL);
+    if (!expect(p, T_EQUAL)) return NULL;
 
     Expr *value = parse_expression(p, 0);
 
-    expect(p, T_CLOSING);
+    if (!expect(p, T_CLOSING)) return NULL;
 
     Stmt *stmt = make_stmt(STMT_LET, p->arena);
     stmt->loc = kw->loc;
@@ -331,7 +322,7 @@ static Stmt *parse_block(Parser *p, Token *kw) {
         da_append(&block->as.block.statements, stmt);
     }
 
-    expect(p, T_CCPARENT);
+    if (!expect(p, T_CCPARENT)) return NULL;
 
     return block;
 }
@@ -353,7 +344,7 @@ static Stmt *parse_statement(Parser *p) {
     }
 
     Expr *expr = parse_expression(p, 0);
-    expect(p, T_CLOSING);
+    if (!expect(p, T_CLOSING)) return NULL;
 
     Stmt *stmt = make_stmt(STMT_EXPR, p->arena);
     stmt->loc = expr->loc;
@@ -458,14 +449,10 @@ bool make_ast(Arena *a, Statements *stmts, Tokens *t) {
 
     while (!is_at_end(&p)) {
         Stmt *stmt = parse_statement(&p);
-        da_append(stmts, stmt);
-    }
-    if (p.errors.count > 0) {
-        for(size_t i = 0; i < p.errors.count; i++) {
-            perr("%s", p.errors.items[i]);
-            free(p.errors.items[i]);
+        if (stmt == NULL) {
+            return false;
         }
-        return false;
+        da_append(stmts, stmt);
     }
     return true;
 }

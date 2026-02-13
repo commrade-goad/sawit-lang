@@ -5,6 +5,7 @@
 #include "nob.h"
 #include "arena.h"
 #include "utils.h"
+#include "ast.h"
 #include <stdbool.h>
 
 typedef struct Type {
@@ -35,18 +36,18 @@ typedef struct Scope {
 } Scope;
 
 typedef struct {
-    Arena *a;
+    Arena *arena;
     Scope *current_scope;
     Errors errors;
     bool had_error;
 } Semantic;
-
-void semantic_init(Semantic *s);
 
 void enter_scope(Semantic *s);
 void leave_scope(Semantic *s);
 
 bool define_symbol(Semantic *s, Symbol symbol);
 Symbol *lookup_symbol(Semantic *s, const char *name);
+
+void semantic_check(Semantic *s, Statements *p);
 
 #endif /* SEMANTIC_H */
