@@ -8,6 +8,7 @@
 #include "utils.h"
 
 #define LET_STR "let"
+#define CONST_STR "const"
 #define TYPE_STR "type"
 #define FN_STR "fn"
 #define CONTINUE_STR "continue"

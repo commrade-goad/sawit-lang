@@ -18,6 +18,8 @@ typedef struct {
     size_t capacity;
 } Errors;
 
+#define CTCHK "comptimecheck"
+
 #define log_error(loc, fmt, ...) \
     do { fprintf(stderr, "%s:%lu:%lu: error: " fmt "\n", loc.name, loc.line, loc.col, ##__VA_ARGS__); } while(0)
 

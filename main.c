@@ -79,14 +79,14 @@ int main(int argc, char **argv) {
     }
 
     // == SEMANTIC CHECKING
-    Semantic semantic = {0};
-    semantic.arena = &rarena;
+    /* Semantic semantic = {0}; */
+    /* semantic.arena = &rarena; */
 
-    start = current_time_ns();
-    semantic_check(&semantic, &program);
-    end = current_time_ns();
-    elapsed_ms = (double)(end - start) / 1e6;
-    printf("Semantic Checking : %.3f ms\n", elapsed_ms);
+    /* start = current_time_ns(); */
+    /* semantic_check(&semantic, &program); */
+    /* end = current_time_ns(); */
+    /* elapsed_ms = (double)(end - start) / 1e6; */
+    /* printf("Semantic Checking : %.3f ms\n", elapsed_ms); */
 
     goto cleanup;
 

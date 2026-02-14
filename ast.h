@@ -22,6 +22,7 @@ typedef enum {
 typedef enum {
     STMT_EXPR,     // expression as statement: a + 5;
     STMT_LET,      // let a = expr;
+    STMT_CONST,    // BGCOLOR :: "red";
     STMT_RET,      // return
     STMT_IF,       // if (a) {} else {}
     STMT_FOR,      // for (init; cond; inc) body
@@ -88,6 +89,12 @@ struct Stmt {
             char *type;
             Expr *value;
         } let;
+
+        struct {
+            char *name;
+            char *type;
+            Expr *value;
+        } const_stmt;
 
         // if (cond) then_b else else_b
         struct {

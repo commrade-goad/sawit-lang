@@ -3,23 +3,22 @@
 #include <string.h>
 
 // @TODO: not done yet:
-// - Function return name check right now it just a free style but when struct done impl it should not be!
 // - Return type checking (function return matches declaration) -- Return type checking - Check that return expressions match function's declared return type
 // - Undefined function detection -- Function vs variable distinction - Ensure identifiers used as functions are actually functions
-// - rest of the stuff: struct, enum, array bound(index), control flow (break, etc)
+// - rest of the stuff: struct, array bound(index), control flow (break, continue)
 // - function defined below will not be usable at the top i want to fix that
 // - module system will benefit by this ^
 //   so we need to do the typechecking twice for the funciton stuff so if its still on the same scope or on the parent scope then allow it to be Undefined for a while until last part of semantic chekcing if that thing still not available then error out!
-// - semantic check twice!
 // - const !
 // - pointer type okay?
 // - dereference, address
+// - generics on struct (struct not even implemented yet)
 
 // LATER
 // - type aliasing so i can alias u32 to FLAG or something!
 // - if as n expr (later to make it not needed to use tenary op
 // - enum can be a union will be nice (not supported for now idk what is a good syntax for this)
-// - namespace on enum will be nice later on (not right now!)
+// - namespace on enum and struct will be nice later on (not right now!)
 
 // ============================================================================
 // Type Creation Functions
@@ -120,7 +119,7 @@ Type *make_array_type(Type *element_type, size_t size, Arena *a) {
 // ============================================================================
 
 Type *type_from_string(Semantic *s, const char *name) {
-    if (!name || strcmp(name, "comptimecheck") == 0) {
+    if (!name || strcmp(name, CTCHK) == 0) {
         return NULL;  // Will be inferred
     }
 
@@ -843,7 +842,7 @@ static void analyze_stmt(Semantic *s, Stmt *stmt) {
         sym.is_const = false;
 
         // Type inference or explicit type
-        if (stmt->as.let.type && strcmp(stmt->as.let.type, "comptimecheck") != 0) {
+        if (stmt->as.let.type && strcmp(stmt->as.let.type, CTCHK) != 0) {
             // Explicit type
             sym.type = type_from_string(s, stmt->as.let.type);
             if (!sym.type) {

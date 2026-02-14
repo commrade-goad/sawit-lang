@@ -3,10 +3,10 @@
 __THIS IS STILL WIP!__
 
 ## TODO:
-- [ ] scope stack (save func and var)
 - [ ] semantic analysis
 - [ ] runtime
 - [ ] runtime integrate with libffi
+- [ ] All of the AST
 
 - [x] All of the token
-- [ ] All of the AST
+- [x] scope stack (save func and var)

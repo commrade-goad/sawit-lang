@@ -138,6 +138,9 @@ inline static void make_ident_or_n(Tokens *t, String_Builder *sb, SrcLoc loc) {
     } else if (strcmp(tmp, RETURN_STR) == 0) {
         n.tk       = T_RETURN;
         is_keyword = true;
+    } else if (strcmp(tmp, CONST_STR) == 0) {
+        n.tk       = T_CONST;
+        is_keyword = true;
     } else if (strcmp(tmp, FN_STR) == 0) {
         n.tk       = T_FN;
         is_keyword = true;

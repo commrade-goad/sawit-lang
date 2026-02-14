@@ -21,9 +21,45 @@
 // let second u32 = 200000;
 // min = second;
 
-let third = fn () -> void {};
-let fourth = fn (a s32) -> s32 { return 10; };
-third = fourth;
+// let third = fn () -> void {};
+// let fourth = fn (a s32) -> s32 { return 10; };
+
+// Point :: type {
+//     x f32;
+//     y f32;
+// };
+
+// let metux = false;
+// if (metux == false) {
+//     let sixth = 10;
+// } else let sixth = 6;
+
+// Color :: enum {
+//     RED;
+//     GREEN;
+//     BLUE;
+// };
+
+// for (;;) return "a";
+
+// >> foreign
+
+let b []u8 = "yes";
+
+enum Color = {
+     RED = 69;
+     GREEN;
+     BLUE;
+};
+
+// struct Point = {
+//        x f32;
+//        y f32;
+// };
+const IAM_A_CONST = b;
+const IAM_A_CONST []u8 = b;
+
+// let a = fn () -> Color { return 10 + 2; }();
 
 // let x s32 = add(10, 12);
 // let y = 20;

@@ -150,7 +150,8 @@ static Stmt *parse_let(Parser *p, Token *kw);
 static Stmt *parse_block(Parser *p, Token *kw);
 static Stmt *parse_if(Parser *p, Token *kw);
 static Stmt *parse_for(Parser *p, Token *kw);
-static Stmt *parse_enum_def(Parser *p, Token *name_tok);
+static Stmt *parse_enum(Parser *p, Token *name_tok);
+static Stmt *parse_const(Parser *p, Token *name_tok);
 
 static Expr *parse_expression(Parser *p, int min_bp) {
     Expr *lhs;
@@ -217,7 +218,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
                 }
                 Param p = {
                     .name = name->data.String,
-                    .type = typename ? typename->data.String : "comptimecheck"
+                    .type = typename ? typename->data.String : CTCHK
                 };
                 da_append(&params, p);
             } while (match(p, T_COMMA));
@@ -243,7 +244,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
             if (retval) {
                 lhs->as.function.ret = retval->data.String;
             } else {
-                lhs->as.function.ret = "comptimecheck";
+                lhs->as.function.ret = CTCHK;
             }
             lhs->as.function.body = body;
             lhs->as.function.params = params;
@@ -423,18 +424,54 @@ static Stmt *parse_for(Parser *p, Token *kw) {
     return stmt;
 }
 
-static Stmt *parse_enum_def(Parser *p, Token *name_tok) {
-    Stmt *stmt = make_stmt(STMT_ENUM_DEF, p->arena);
-    stmt->loc = name_tok->loc;
-    stmt->as.enum_def.name = name_tok->data.String;
-    stmt->as.enum_def.variants = (EnumVariants){0};
+static Stmt *parse_const(Parser *p, Token *btok) {
+    Token *current = peek(p);
+    if (!check(p, T_IDENT)) {
+        log_error(current->loc, "const statement expected token %s, but got %s", get_token_str(T_IDENT), get_token_str(current->tk));
+        return NULL;
+    }
+    advance(p);
+    Token *consttype = NULL;
+    if (check(p, T_IDENT)) {
+        consttype = peek(p);
+        advance(p);
+    }
+    EXPECT_EXIT(p, T_EQUAL);
+    current = peek(p);
+    Expr *exp = parse_expression(p, 0);
+    if (!exp) {
+        log_error(current->loc, "const statement expected Expression got %s", get_token_str(current->tk));
+        return NULL;
+    }
+    Stmt *const_stmt = make_stmt(STMT_CONST, p->arena);
+    const_stmt->loc = btok->loc;
+    const_stmt->as.const_stmt.name = current->data.String;
+    const_stmt->as.const_stmt.value = exp;
+    const_stmt->as.const_stmt.type = consttype ? consttype->data.String : CTCHK;
 
-    // Expect :: enum { ... }
-    EXPECT_EXIT(p, T_DCOLON);
-    EXPECT_EXIT(p, T_ENUM);
+    EXPECT_EXIT(p, T_CLOSING);
+    return const_stmt;
+}
+
+// @NOTE: you cant change the enum type for now because its too painfull later on... but in the future sure!
+static Stmt *parse_enum(Parser *p, Token *btok) {
+    Token *nametk = peek(p);
+    if (!check(p, T_IDENT)) {
+        log_error(nametk->loc, "enum statement expected token %s, but got %s", get_token_str(T_IDENT), get_token_str(nametk->tk));
+        return NULL;
+    }
+    advance(p);
+
+    EXPECT_EXIT(p, T_EQUAL);
     EXPECT_EXIT(p, T_OCPARENT);
-
     int64_t current_value = 0;
+    Stmt * stmt = make_stmt(STMT_ENUM_DEF, p->arena);
+    size_t region_size = sizeof(char) * strlen(nametk->data.String);
+    char *region = arena_alloc(p->arena, region_size + 1);
+    strncpy(region, nametk->data.String, region_size);
+    region[region_size] = '\0';
+    stmt->as.enum_def.name = region;
+    stmt->loc = btok->loc;
 
     while (!check(p, T_CCPARENT)) {
         Token *variant_tok = peek(p);
@@ -469,6 +506,60 @@ static Stmt *parse_enum_def(Parser *p, Token *name_tok) {
 
     return stmt;
 }
+
+/*
+static Stmt *parse_enum_or_const_or_struct_def(Parser *p, Token *name_tok) {
+    EXPECT_EXIT(p, T_DCOLON);
+
+    if (check(p, T_ENUM)) {
+        Stmt *stmt = make_stmt(STMT_ENUM_DEF, p->arena);
+        stmt->loc = name_tok->loc;
+        stmt->as.enum_def.name = name_tok->data.String;
+        stmt->as.enum_def.variants = (EnumVariants){0};
+
+        EXPECT_EXIT(p, T_ENUM);
+        EXPECT_EXIT(p, T_OCPARENT);
+
+        int64_t current_value = 0;
+
+        while (!check(p, T_CCPARENT)) {
+            Token *variant_tok = peek(p);
+            EXPECT_EXIT(p, T_IDENT);
+
+            EnumVariant variant = {
+                .name = variant_tok->data.String,
+                .value = current_value++
+            };
+
+            if (check(p, T_EQUAL)) {
+                advance(p);
+                Token *current = peek(p);
+                if (current && current->tk == T_NUM) {
+                    current_value = current->data.Uint64;
+                    variant.value = current_value++;
+                    advance(p);
+                } else {
+                    log_error(current->loc, "Expected an integer for the value but got %s", get_token_str(current->tk));
+                    return NULL;
+                }
+            }
+            da_append(&stmt->as.enum_def.variants, variant);
+
+            if (!match(p, T_CLOSING)) {
+                break;
+            }
+        }
+
+        EXPECT_EXIT(p, T_CCPARENT);
+        EXPECT_EXIT(p, T_CLOSING);
+
+        return stmt;
+    } else if (check(p, T_STRUCT)) {
+        return NULL;
+    } else {
+    }
+}
+*/
 
 static Stmt *parse_return(Parser *p, Token *kw) {
     Stmt *stmt = make_stmt(STMT_RET, p->arena);
@@ -508,7 +599,7 @@ static Stmt *parse_let(Parser *p, Token *kw) {
     if (lettype) {
         stmt->as.let.type = lettype->data.String;
     } else {
-        stmt->as.let.type = "comptimecheck";
+        stmt->as.let.type = CTCHK;
     }
     stmt->as.let.value = value;
 
@@ -560,16 +651,22 @@ static Stmt *parse_statement(Parser *p) {
         return parse_for(p, kw);
     }
 
-    // Check for enum definition: Name :: enum { ... };
-    if (check(p, T_IDENT)) {
-        Token *name_tok = peek(p);
-        // Peek ahead for ::
-        if (p->current + 1 < p->tokens->count &&
-            p->tokens->items[p->current + 1].tk == T_DCOLON) {
-            advance(p); // consume identifier
-            return parse_enum_def(p, name_tok);
-        }
+    if (match(p, T_CONST)) {
+        Token *kw = previous(p);
+        return parse_const(p, kw);
     }
+
+    if (match(p, T_ENUM)) {
+        Token *kw = previous(p);
+        return parse_enum(p, kw);
+    }
+
+    /*
+    if (match(p, T_TYPE)) {
+        Token *kw = previous(p);
+        return parse_struct(p, kw);
+    }
+    */
 
     Expr *expr = parse_expression(p, 0);
     if (!expr) return NULL;
@@ -700,6 +797,11 @@ void print_stmt(Stmt *s, int indent) {
     case STMT_LET:
         printf("LET %s: %s\n", s->as.let.name, s->as.let.type);
         print_expr(s->as.let.value, indent + 1);
+        break;
+
+    case STMT_CONST:
+        printf("CONST %s: %s\n", s->as.let.name, s->as.let.type);
+        print_expr(s->as.const_stmt.value, indent + 1);
         break;
 
     case STMT_EXPR:
