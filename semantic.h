@@ -28,7 +28,9 @@ typedef enum {
     TYPE_POINTER,
     TYPE_FUNCTION,
     TYPE_ARRAY,
-    TYPE_UNKNOWN, // for struct, enum, etc
+    TYPE_STRUCT,  // user-defined struct
+    TYPE_ENUM,    // user-defined enum
+    TYPE_UNKNOWN,
 } TypeKind;
 
 // Forward declaration
@@ -58,7 +60,7 @@ struct Type {
             size_t size;  // 0 for dynamic arrays
         } array;
 
-        // For user-defined types (future: structs, enums)
+        // For user-defined types (structs, enums)
         void *user_data;
     } as;
 };
@@ -73,7 +75,7 @@ typedef struct {
     char *name;
     Symbol_Kind kind;
     Type *type;
-    bool is_const;  // for future const support
+    bool is_const;
 } Symbol;
 
 typedef struct {
@@ -106,7 +108,7 @@ const char *type_to_string(Type *t);
 
 // Type comparison
 bool types_equal(Type *a, Type *b);
-bool type_can_assign_to(Type *value_type, Type *target_type);
+bool type_can_assign_to(Type *value_type, Type *target_type, bool is_init);
 
 // Type inference
 Type *infer_expr_type(Semantic *s, Expr *expr);
