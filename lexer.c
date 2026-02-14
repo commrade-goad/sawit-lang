@@ -122,6 +122,45 @@ inline static void make_ident_or_n(Tokens *t, String_Builder *sb, SrcLoc loc) {
     } else if (strcmp(tmp, RETURN_STR) == 0) {
         n.tk       = T_RETURN;
         is_keyword = true;
+    } else if (strcmp(tmp, IF_STR) == 0) {
+        n.tk       = T_IF;
+        is_keyword = true;
+    } else if (strcmp(tmp, ELSE_STR) == 0) {
+        n.tk       = T_ELSE;
+        is_keyword = true;
+    } else if (strcmp(tmp, FOR_STR) == 0) {
+        n.tk       = T_FOR;
+        is_keyword = true;
+    } else if (strcmp(tmp, TRUE_STR) == 0) {
+        n.tk       = T_TRUE;
+        is_keyword = true;
+    } else if (strcmp(tmp, FALSE_STR) == 0) {
+        n.tk       = T_FALSE;
+        is_keyword = true;
+    } else if (strcmp(tmp, BREAK_STR) == 0) {
+        n.tk       = T_BREAK;
+        is_keyword = true;
+    } else if (strcmp(tmp, CONTINUE_STR) == 0) {
+        n.tk       = T_CONTINUE;
+        is_keyword = true;
+    } else if (strcmp(tmp, TYPE_STR) == 0) {
+        n.tk       = T_TYPE;
+        is_keyword = true;
+    } else if (strcmp(tmp, ENUM_STR) == 0) {
+        n.tk       = T_ENUM;
+        is_keyword = true;
+    } else if (strcmp(tmp, CAST_STR) == 0) {
+        n.tk       = T_CAST;
+        is_keyword = true;
+    } else if (strcmp(tmp, SIZEOF_STR) == 0) {
+        n.tk       = T_SIZEOF;
+        is_keyword = true;
+    } else if (strcmp(tmp, FN_STR) == 0) {
+        n.tk       = T_FN;
+        is_keyword = true;
+    } else if (strcmp(tmp, NULL_STR) == 0) {
+        n.tk       = T_NULL;
+        is_keyword = true;
     }
     if (is_keyword) {
         free(tmp);
@@ -204,6 +243,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
         switch (ch) {
         case STAR_CHR:
         case DIV_CHR:
+        case MOD_CHR:
         case COMMA_CHR:
         case STRING_CHR: // "
         case CLOSING_CHR:
@@ -213,6 +253,12 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
         case OCPARENT_CHR:
         case CCPARENT_CHR:
         case COLON_CHR:
+        case LESS_CHR:
+        case GREATER_CHR:
+        case BANG_CHR:
+        case AMPERSAND_CHR:
+        case PIPE_CHR:
+        case DOT_CHR:
             if (sb.count > 0) { make_ident_or_n(tokens, &sb, currentloc); }
             break;
         default:
@@ -293,12 +339,22 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             t.tk = (ch == '*') ? T_STAR : T_DIV;
             da_append(tokens, t);
             continue;
+        case MOD_CHR: {
+            t.tk = T_MOD;
+            da_append(tokens, t);
+        } break;
         case CLOSING_CHR: {
             t.tk = T_CLOSING;
             da_append(tokens, t);
         } break;
         case EQUAL_CHR: {
-            t.tk = T_EQUAL;
+            char *nc = peek(&cur, 0);
+            if (nc && *nc == EQUAL_CHR) {
+                t.tk = T_EQ;
+                next(&cur);
+            } else {
+                t.tk = T_EQUAL;
+            }
             da_append(tokens, t);
         } break;
         case OPARENT_CHR: {
@@ -328,6 +384,67 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
                 t.tk = T_DCOLON;
                 next(&cur);
             }
+            da_append(tokens, t);
+        } break;
+        case LESS_CHR: {
+            char *nc = peek(&cur, 0);
+            if (nc && *nc == LESS_CHR) {
+                t.tk = T_LSHIFT;
+                next(&cur);
+            } else if (nc && *nc == EQUAL_CHR) {
+                t.tk = T_LTE;
+                next(&cur);
+            } else {
+                t.tk = T_LT;
+            }
+            da_append(tokens, t);
+        } break;
+        case GREATER_CHR: {
+            char *nc = peek(&cur, 0);
+            if (nc && *nc == GREATER_CHR) {
+                t.tk = T_RSHIFT;
+                next(&cur);
+            } else if (nc && *nc == EQUAL_CHR) {
+                t.tk = T_GTE;
+                next(&cur);
+            } else {
+                t.tk = T_GT;
+            }
+            da_append(tokens, t);
+        } break;
+        case BANG_CHR: {
+            char *nc = peek(&cur, 0);
+            if (nc && *nc == EQUAL_CHR) {
+                t.tk = T_NEQ;
+                next(&cur);
+                da_append(tokens, t);
+            } else {
+                t.tk = T_NOT;
+                da_append(tokens, t);
+            }
+        } break;
+        case AMPERSAND_CHR: {
+            char *nc = peek(&cur, 0);
+            if (nc && *nc == AMPERSAND_CHR) {
+                t.tk = T_AND;
+                next(&cur);
+            } else {
+                t.tk = T_BIT_AND;
+            }
+            da_append(tokens, t);
+        } break;
+        case PIPE_CHR: {
+            char *nc = peek(&cur, 0);
+            if (nc && *nc == PIPE_CHR) {
+                t.tk = T_OR;
+                next(&cur);
+            } else {
+                t.tk = T_BIT_OR;
+            }
+            da_append(tokens, t);
+        } break;
+        case DOT_CHR: {
+            t.tk = T_DOT;
             da_append(tokens, t);
         } break;
         default: { match = false; } break;

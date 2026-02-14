@@ -8,16 +8,25 @@
 #include "utils.h"
 
 #define LET_STR "let"
-#define TYPE_STR "type"
-#define CONTINUE_STR "continue"
-#define BREAK_STR "break"
 #define IF_STR "if"
+#define ELSE_STR "else"
 #define FOR_STR "for"
 #define RETURN_STR "return"
+#define TRUE_STR "true"
+#define FALSE_STR "false"
+#define TYPE_STR "type"
+#define ENUM_STR "enum"
+#define BREAK_STR "break"
+#define CONTINUE_STR "continue"
+#define CAST_STR "cast"
+#define SIZEOF_STR "sizeof"
+#define FN_STR "fn"
+#define NULL_STR "null"
 #define STAR_CHR '*'
 #define DIV_CHR '/'
 #define PLUS_CHR '+'
 #define MIN_CHR '-'
+#define MOD_CHR '%'
 #define COMMENT_CHR2 '/'
 #define COMMENT_CHR '#'
 #define OCPARENT_CHR '{'
@@ -29,6 +38,12 @@
 #define COLON_CHR ':'
 #define STRING_CHR '"'
 #define COMMA_CHR ','
+#define LESS_CHR '<'
+#define GREATER_CHR '>'
+#define BANG_CHR '!'
+#define AMPERSAND_CHR '&'
+#define PIPE_CHR '|'
+#define DOT_CHR '.'
 
 typedef enum {
     T_EOF = 0,
@@ -53,14 +68,48 @@ typedef enum {
     T_PLUS,     // +
     T_STAR,     // *
     T_DIV,      // /
+    T_MOD,      // %
+
+    // COMPARISON
+    T_EQ,       // ==
+    T_NEQ,      // !=
+    T_LT,       // <
+    T_GT,       // >
+    T_LTE,      // <=
+    T_GTE,      // >=
+
+    // LOGICAL
+    T_AND,      // &&
+    T_OR,       // ||
+    T_NOT,      // !
+
+    // BITWISE
+    T_BIT_AND,  // &
+    T_BIT_OR,   // |
+    T_LSHIFT,   // <<
+    T_RSHIFT,   // >>
+
+    // MEMBER ACCESS
+    T_DOT,      // .
 
     T_LET,
     T_CONST,
     T_RETURN,
     T_IF,
     T_ELSE,
+    T_FOR,
+    T_BREAK,
+    T_CONTINUE,
     T_STRUCT,
     T_ENUM,
+    T_TYPE,
+    T_CAST,
+    T_SIZEOF,
+    T_FN,
+
+    T_TRUE,
+    T_FALSE,
+    T_NULL,
 
     T_IDENT,
     T_CHR,
@@ -89,13 +138,38 @@ static inline const char *get_token_str(TokenKind tk) {
     case T_PLUS:     { return "T_PLUS";     } break;
     case T_STAR:     { return "T_STAR";     } break;
     case T_DIV:      { return "T_DIV";      } break;
+    case T_MOD:      { return "T_MOD";      } break;
+    case T_EQ:       { return "T_EQ";       } break;
+    case T_NEQ:      { return "T_NEQ";      } break;
+    case T_LT:       { return "T_LT";       } break;
+    case T_GT:       { return "T_GT";       } break;
+    case T_LTE:      { return "T_LTE";      } break;
+    case T_GTE:      { return "T_GTE";      } break;
+    case T_AND:      { return "T_AND";      } break;
+    case T_OR:       { return "T_OR";       } break;
+    case T_NOT:      { return "T_NOT";      } break;
+    case T_BIT_AND:  { return "T_BIT_AND";  } break;
+    case T_BIT_OR:   { return "T_BIT_OR";   } break;
+    case T_LSHIFT:   { return "T_LSHIFT";   } break;
+    case T_RSHIFT:   { return "T_RSHIFT";   } break;
+    case T_DOT:      { return "T_DOT";      } break;
     case T_LET:      { return "T_LET";      } break;
     case T_CONST:    { return "T_CONST";    } break;
     case T_RETURN:   { return "T_RETURN";   } break;
     case T_IF:       { return "T_IF";       } break;
     case T_ELSE:     { return "T_ELSE";     } break;
+    case T_FOR:      { return "T_FOR";      } break;
+    case T_BREAK:    { return "T_BREAK";    } break;
+    case T_CONTINUE: { return "T_CONTINUE"; } break;
     case T_STRUCT:   { return "T_STRUCT";   } break;
     case T_ENUM:     { return "T_ENUM";     } break;
+    case T_TYPE:     { return "T_TYPE";     } break;
+    case T_CAST:     { return "T_CAST";     } break;
+    case T_SIZEOF:   { return "T_SIZEOF";   } break;
+    case T_FN:       { return "T_FN";       } break;
+    case T_TRUE:     { return "T_TRUE";     } break;
+    case T_FALSE:    { return "T_FALSE";    } break;
+    case T_NULL:     { return "T_NULL";     } break;
     case T_IDENT:    { return "T_IDENT";    } break;
     case T_CHR:      { return "T_CHR";      } break;
     case T_STR:      { return "T_STR";      } break;

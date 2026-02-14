@@ -1,0 +1,114 @@
+# Test logical NOT operator
+let flag s8 = true;
+let negated s8 = !flag;    # false
+
+let x s32 = 10;
+let not_zero s8 = !(x == 0);  # true
+
+# Test bitwise shift operators
+let val u8 = 4;       # 0b00000100
+let left u8 = val << 2;    # 0b00010000 = 16
+let right u8 = left >> 1;  # 0b00001000 = 8
+
+# Test struct with field initialization
+Point :: type {
+    x s32
+    y s32
+}
+
+let origin = Point{x: 0, y: 0};
+let p1 = Point{x: 10, y: 20};
+
+# Test member access
+let px = origin.x;     # 0
+let py = p1.y;         # 20
+
+# Test generic struct (template)
+Vec :: type<T> {
+    data *T
+    len u64
+    cap u64
+}
+
+# Use generic struct with concrete type
+let int_vec = Vec<s32>{data: &x, len: 1, cap: 10};
+let float_vec = Vec<f64>{data: &px, len: 0, cap: 5};
+
+# Test nested struct
+Rect :: type {
+    top_left Point
+    bottom_right Point
+}
+
+let rect = Rect{
+    top_left: Point{x: 0, y: 0},
+    bottom_right: Point{x: 100, y: 100}
+};
+
+# Access nested members
+let width = rect.bottom_right.x;
+
+# Test all bitwise operations together
+let a u8 = 12;   # 0b00001100
+let b u8 = 10;   # 0b00001010
+
+let and_result u8 = a & b;      # 0b00001000 = 8
+let or_result u8 = a | b;       # 0b00001110 = 14
+let shift_left u8 = a << 1;     # 0b00011000 = 24
+let shift_right u8 = a >> 2;    # 0b00000011 = 3
+
+# Test logical operators with NOT
+let t s8 = true;
+let f s8 = false;
+
+let complex s8 = !t || (f && t);     # false || false = false
+let another s8 = !(t && f);          # !(false) = true
+
+# Test complete operator precedence
+let result s8 = !t || f && t;        # (!t) || (f && t)
+let math s32 = (x << 2) + (val >> 1); 
+
+# Test struct with pointers
+Node :: type {
+    value s32
+    next *Node
+}
+
+# Test generic with multiple type parameters
+Pair :: type<T, U> {
+    first T
+    second U
+}
+
+# Use pair with different types
+let int_str_pair = Pair<s32, s8>{first: 42, second: true};
+
+# Test method-like syntax (will be rewritten by compiler)
+# let v = Vec<s32>{data: &x, len: 0, cap: 0};
+# v.push(10);  # Will be rewritten to: v.push(&v, 10)
+
+# Complex nested expression
+let complicated s8 = !((x > 0) && (px < 100)) || (val << 1) == 8;
+
+# Test all comparison operators with shifts
+let cmp1 s8 = (a << 1) > (b << 1);
+let cmp2 s8 = (a >> 1) <= (b >> 1);
+
+# Nested generics (future)
+# Matrix :: type<T> {
+#     rows u64
+#     cols u64
+#     data Vec<Vec<T>>
+# }
+
+# Struct initialization without all fields (should error)
+# let partial = Point{x: 10};  # Error: missing field 'y'
+
+# Test precedence: shifts vs arithmetic
+let prec1 u8 = 2 + 3 << 1;   # (2 + 3) << 1 = 10
+let prec2 u8 = 2 << 1 + 1;   # 2 << (1 + 1) = 8
+
+# Test complex logical expressions
+let log1 s8 = !t && !f;           # false && true = false
+let log2 s8 = !(t || f);          # !(true) = false
+let log3 s8 = !t || !f;           # false || true = true
