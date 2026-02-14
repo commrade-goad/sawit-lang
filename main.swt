@@ -10,23 +10,23 @@
 //     return;
 // };
 
-let add = (a s32, b s32) -> s32 {
+let add = fn (a s32, b s32) -> s32 {
     return a + b;
 };
 
 let min = 10;
 {
-    let min = () -> void { };
+    let min = fn () -> void { };
 }
 min = 20;
 
-let x s32 = add(10, 12);
-let y = 20;
+// let x s32 = add(10, 12);
+// let y = 20;
 
-add(10, 20);
+// add(10, 20);
 
-let stuff =
-"hello";
+// let stuff =
+// "hello";
 
 
 // struct

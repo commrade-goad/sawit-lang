@@ -3,6 +3,9 @@
 
 #define BIGGEST_POWER 40
 
+#define EXPECT_EXIT(p, toktype) \
+    do { if(!expect((p), (toktype))) return NULL; } while(0)
+
 static Token *peek(Parser *p) {
     return &p->tokens->items[p->current];
 }
@@ -119,17 +122,15 @@ static Expr *parse_expression(Parser *p, int min_bp) {
         lhs->as.identifier = tok->data.String;
     } break;
 
-    case T_OPARENT: {
-        size_t saved = p->current;
-        bool is_param_list = true;
+    case T_FN: {
+        Token *before = peek(p);
         Params params = {0};
-        Token *before = previous(p);
-
+        EXPECT_EXIT(p, T_OPARENT);
         if (!check(p, T_CPARENT)) {
             do {
                 if (!check(p, T_IDENT)) {
-                    is_param_list = false;
-                    break;
+                    log_error(peek(p)->loc, "Expecting the parameter to be identifier not %s.", get_token_str(peek(p)->tk));
+                    return NULL;
                 }
 
                 Token *name = advance(p);
@@ -144,25 +145,25 @@ static Expr *parse_expression(Parser *p, int min_bp) {
                 }
                 Param p = {
                     .name = name->data.String,
-                    .type = typename ? typename->data.String : "any"
+                    .type = typename ? typename->data.String : "comptimecheck"
                 };
                 da_append(&params, p);
-
             } while (match(p, T_COMMA));
         }
 
-        if (is_param_list && match(p, T_CPARENT) && check(p, T_ARROW)) {
-            advance(p); // consume ->
+        if (match(p, T_CPARENT) && check(p, T_ARROW)) {
+            advance(p);
+            Token *retval = peek(p);
 
-            Token *retval = NULL;
-
-            // consume ident ret
             if (check(p, T_IDENT)) {
-                retval = peek(p);
                 advance(p);
+            } else {
+                if (!retval) return NULL;
+                log_error(retval->loc, "Expected a return value instead got %s", get_token_str(retval->tk));
+                return NULL;
             }
 
-            if (!expect(p, T_OCPARENT)) return NULL;
+            EXPECT_EXIT(p, T_OCPARENT);
             Token *kw = previous(p);
             Stmt *body = parse_block(p, kw);
 
@@ -170,22 +171,25 @@ static Expr *parse_expression(Parser *p, int min_bp) {
             if (retval) {
                 lhs->as.function.ret = retval->data.String;
             } else {
-                lhs->as.function.ret = "any";
+                lhs->as.function.ret = "comptimecheck";
             }
             lhs->as.function.body = body;
             lhs->as.function.params = params;
             lhs->loc = before->loc;
         } else {
-            // rollback
-            p->current = saved;
-
-            lhs = parse_expression(p, 0);
-            if (!expect(p, T_CPARENT)) return NULL;
+            log_error(peek(p)->loc, "Unexpected token in expression %s expected %s", get_token_str(peek(p)->tk), get_token_str(T_ARROW));
+            return NULL;
         }
+    } break;
+    case T_OPARENT: {
+        lhs = parse_expression(p, 0);
+        if (!lhs) return NULL;
+        EXPECT_EXIT(p, T_CPARENT);
     } break;
 
     case T_MIN: { // unary minus
         Expr *rhs = parse_expression(p, BIGGEST_POWER);
+        if (!rhs) return NULL;
 
         lhs = make_expr(AST_UNARY_OP, p->arena);
         lhs->loc = tok->loc;
@@ -220,11 +224,12 @@ static Expr *parse_expression(Parser *p, int min_bp) {
             if (!check(p, T_CPARENT)) {
                 do {
                     Expr *arg = parse_expression(p, 0);
+                    if (!arg) return NULL;
                     da_append(&args, arg);
                 } while (match(p, T_COMMA));
             }
 
-            if (!expect(p, T_CPARENT)) return NULL;
+            EXPECT_EXIT(p, T_CPARENT);
 
             Expr *call = make_expr(AST_CALL, p->arena);
             call->as.call.callee = lhs;
@@ -238,6 +243,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
         TokenKind op = next->tk;
         advance(p);
         Expr *rhs = parse_expression(p, right_bp);
+        if (!rhs) return NULL;
 
         if (op == T_EQUAL) {
             if (lhs->type != AST_IDENTIFIER) {
@@ -272,29 +278,31 @@ static Stmt *parse_return(Parser *p, Token *kw) {
 
     if (!check(p, T_CLOSING)) {
         stmt->as.expr.expr = parse_expression(p, 0);
+        if (!stmt->as.expr.expr) return NULL;
     } else {
         stmt->as.expr.expr = NULL;
     }
 
-    if (!expect(p, T_CLOSING)) return NULL;
+    EXPECT_EXIT(p, T_CLOSING);
     return stmt;
 }
 
 static Stmt *parse_let(Parser *p, Token *kw) {
     Token *name = peek(p);
-    if (!expect(p, T_IDENT)) return NULL;
+    EXPECT_EXIT(p, T_IDENT);
 
     Token *lettype = NULL;
     if (check(p, T_IDENT)) {
         lettype = peek(p);
-        if (!expect(p, T_IDENT)) return NULL;
+        EXPECT_EXIT(p, T_IDENT);
     }
 
-    if (!expect(p, T_EQUAL)) return NULL;
+    EXPECT_EXIT(p, T_EQUAL);
 
     Expr *value = parse_expression(p, 0);
+    if (!value) return NULL;
 
-    if (!expect(p, T_CLOSING)) return NULL;
+    EXPECT_EXIT(p, T_CLOSING);
 
     Stmt *stmt = make_stmt(STMT_LET, p->arena);
     stmt->loc = kw->loc;
@@ -302,7 +310,7 @@ static Stmt *parse_let(Parser *p, Token *kw) {
     if (lettype) {
         stmt->as.let.type = lettype->data.String;
     } else {
-        stmt->as.let.type = "any";
+        stmt->as.let.type = "comptimecheck";
     }
     stmt->as.let.value = value;
 
@@ -323,7 +331,7 @@ static Stmt *parse_block(Parser *p, Token *kw) {
         da_append(&block->as.block.statements, stmt);
     }
 
-    if (!expect(p, T_CCPARENT)) return NULL;
+    EXPECT_EXIT(p, T_CCPARENT);
 
     return block;
 }
@@ -341,11 +349,12 @@ static Stmt *parse_statement(Parser *p) {
 
     if (match(p, T_OCPARENT)) {
         Token *kw = previous(p);
-        return parse_block(p, kw);
+       return parse_block(p, kw);
     }
 
     Expr *expr = parse_expression(p, 0);
-    if (!expect(p, T_CLOSING)) return NULL;
+    if (!expr) return NULL;
+    EXPECT_EXIT(p, T_CLOSING);
 
     Stmt *stmt = make_stmt(STMT_EXPR, p->arena);
     stmt->loc = expr->loc;

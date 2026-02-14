@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
     double elapsed_ms = (double)(end - start) / 1e6;
     printf("Token parsing     : %.3f ms\n", elapsed_ms);
 
-    // print_token(&tokens);
+    /* print_token(&tokens); */
 
 
     // == AST-ING
@@ -74,9 +74,9 @@ int main(int argc, char **argv) {
     elapsed_ms = (double)(end - start) / 1e6;
     printf("AST parsing       : %.3f ms\n", elapsed_ms);
 
-    // for (size_t i = 0; i < program.count; i++) {
-    //     print_stmt(program.items[i], 0);
-    // }
+    for (size_t i = 0; i < program.count; i++) {
+        print_stmt(program.items[i], 0);
+    }
 
     // == SEMANTIC CHECKING
     Semantic semantic = {0};

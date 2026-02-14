@@ -9,6 +9,7 @@
 
 #define LET_STR "let"
 #define TYPE_STR "type"
+#define FN_STR "fn"
 #define CONTINUE_STR "continue"
 #define BREAK_STR "break"
 #define IF_STR "if"
@@ -55,6 +56,7 @@ typedef enum {
     T_DIV,      // /
 
     T_LET,
+    T_FN,
     T_CONST,
     T_RETURN,
     T_IF,
@@ -90,6 +92,7 @@ static inline const char *get_token_str(TokenKind tk) {
     case T_STAR:     { return "T_STAR";     } break;
     case T_DIV:      { return "T_DIV";      } break;
     case T_LET:      { return "T_LET";      } break;
+    case T_FN:       { return "T_FN";       } break;
     case T_CONST:    { return "T_CONST";    } break;
     case T_RETURN:   { return "T_RETURN";   } break;
     case T_IF:       { return "T_IF";       } break;
