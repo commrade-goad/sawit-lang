@@ -174,8 +174,8 @@ inline static void make_ident_or_n(Tokens *t, String_Builder *sb, SrcLoc loc) {
     } else if (strcmp(tmp, SIZEOF_STR) == 0) {
         n.tk       = T_SIZEOF;
         is_keyword = true;
-    } else if (strcmp(tmp, NULL_STR) == 0) {
-        n.tk       = T_NULL;
+    } else if (strcmp(tmp, TYPEOF_STR) == 0) {
+        n.tk       = T_TYPEOF;
         is_keyword = true;
     } else if (strcmp(tmp, MATCH_STR) == 0) {
         n.tk       = T_MATCH;

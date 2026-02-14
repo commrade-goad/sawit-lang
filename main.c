@@ -7,7 +7,7 @@
 #include "ast.h"
 #include "semantic.h"
 
-static inline void print_token(Tokens *tokens) {
+[[maybe_unused]] static inline void print_token(Tokens *tokens) {
     for (size_t i = 0; i < tokens->count; i++) {
         Token *tok = &tokens->items[i];
         printf("%s:%lu:%lu: %s :: ", tok->loc.name, tok->loc.line, tok->loc.col, get_token_str(tok->tk));

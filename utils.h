@@ -19,7 +19,7 @@ typedef struct {
 } Errors;
 
 #define log_error(loc, fmt, ...) \
-    do { fprintf(stderr, "%s:%lu:%lu:error: " fmt "\n", loc.name, loc.line, loc.col, ##__VA_ARGS__); } while(0)
+    do { fprintf(stderr, "%s:%lu:%lu: error: " fmt "\n", loc.name, loc.line, loc.col, ##__VA_ARGS__); } while(0)
 
 #define perr_exit(fmt, ...)\
     do { fprintf(stderr, "ERROR: " fmt "\n", ##__VA_ARGS__); exit(1); } while(0)

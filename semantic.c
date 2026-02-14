@@ -2,6 +2,22 @@
 #include "ast.h"
 #include <string.h>
 
+// @TODO: not done yet:
+// - Function return name check right now it just a free style but when struct done impl it should not be!
+// - Return type checking (function return matches declaration) -- Return type checking - Check that return expressions match function's declared return type
+// - Undefined function detection -- Function vs variable distinction - Ensure identifiers used as functions are actually functions
+// - rest of the stuff: struct, enum, array bound(index), control flow (break, etc)
+// - function defined below will not be usable at the top i want to fix that
+// - module system will benefit by this ^
+//   so we need to do the typechecking twice for the funciton stuff so if its still on the same scope or on the parent scope then allow it to be Undefined for a while until last part of semantic chekcing if that thing still not available then error out!
+// - semantic check twice!
+
+// LATER
+// - type aliasing so i can alias u32 to FLAG or something!
+// - if as n expr (later to make it not needed to use tenary op
+// - enum can be a union will be nice (not supported for now idk what is a good syntax for this)
+// - namespace on enum will be nice later on (not right now!)
+
 // ============================================================================
 // Type Creation Functions
 // ============================================================================
@@ -63,13 +79,13 @@ Type *make_function_type(Type *return_type, Type **param_types, size_t param_cou
         if (i + 1 < fn->param_count) sb_appendf(&sb, ", ");
     }
     sb_appendf(&sb, ") -> %s", fn->return_type->name);
-    
+
     size_t size = sizeof(char) * (sb.count + 1);
     char *copy = arena_alloc(a, size);
     strncpy(copy, sb.items, sb.count);
     copy[sb.count] = '\0';
     fn_type->name = copy;
-    
+
     da_free(sb);
 
     return fn_type;
@@ -163,40 +179,40 @@ const char *type_to_string(Type *t) {
 
 static size_t get_type_size(Type *t) {
     if (!t) return 0;
-    
+
     switch (t->kind) {
     case TYPE_U8:
     case TYPE_S8:
     case TYPE_CHAR:
     case TYPE_BOOL:
         return 1;
-    
+
     case TYPE_U16:
     case TYPE_S16:
         return 2;
-    
+
     case TYPE_U32:
     case TYPE_S32:
     case TYPE_F32:
         return 4;
-    
+
     case TYPE_U64:
     case TYPE_S64:
     case TYPE_F64:
         return 8;
-    
+
     case TYPE_POINTER:
         return 8; // Assuming 64-bit pointers
-    
+
     case TYPE_ARRAY:
         if (t->as.array.size > 0) {
             return t->as.array.size * get_type_size(t->as.array.element_type);
         }
-        return 8; // Dynamic array is a pointer
-    
+        return 8; // array is NOT Dynamic array
+
     case TYPE_FUNCTION:
         return 8; // Function pointer
-    
+
     case TYPE_VOID:
     case TYPE_UNKNOWN:
     default:
@@ -257,12 +273,12 @@ bool types_equal(Type *a, Type *b) {
 
 // Check if types are compatible for implicit conversion
 static bool is_signed_integer(Type *t) {
-    return t->kind == TYPE_S8 || t->kind == TYPE_S16 || 
+    return t->kind == TYPE_S8 || t->kind == TYPE_S16 ||
            t->kind == TYPE_S32 || t->kind == TYPE_S64;
 }
 
 static bool is_unsigned_integer(Type *t) {
-    return t->kind == TYPE_U8 || t->kind == TYPE_U16 || 
+    return t->kind == TYPE_U8 || t->kind == TYPE_U16 ||
            t->kind == TYPE_U32 || t->kind == TYPE_U64 ||
            t->kind == TYPE_CHAR;
 }
@@ -290,15 +306,15 @@ bool type_can_assign_to(Type *value_type, Type *target_type) {
     if (is_integer(value_type) && is_integer(target_type)) {
         size_t value_size = get_type_size(value_type);
         size_t target_size = get_type_size(target_type);
-        
+
         // Allow widening conversions (smaller to larger)
         if (value_size <= target_size) {
             // Warn if mixing signed/unsigned but allow it
             return true;
         }
-        
+
         // Narrowing conversions are allowed but should warn
-        // TODO: Add warning system
+        // @TODO: Add warning system
         return true;
     }
 
@@ -316,11 +332,11 @@ bool type_can_assign_to(Type *value_type, Type *target_type) {
     // Pointer type compatibility
     if (value_type->kind == TYPE_POINTER && target_type->kind == TYPE_POINTER) {
         // void* can be assigned to any pointer and vice versa
-        if (value_type->as.pointee->kind == TYPE_VOID || 
+        if (value_type->as.pointee->kind == TYPE_VOID ||
             target_type->as.pointee->kind == TYPE_VOID) {
             return true;
         }
-        
+
         // Otherwise, pointee types must match
         return types_equal(value_type->as.pointee, target_type->as.pointee);
     }
@@ -363,7 +379,7 @@ Type *infer_expr_type(Semantic *s, Expr *expr) {
         Type *right_type = infer_expr_type(s, expr->as.binary.right);
 
         TokenKind op = expr->as.binary.op;
-        
+
         // Comparison operators return bool
         if (op == T_EQ || op == T_NEQ || op == T_LT ||
             op == T_GT || op == T_LTE || op == T_GTE) {
@@ -374,7 +390,7 @@ Type *infer_expr_type(Semantic *s, Expr *expr) {
         if (op == T_AND || op == T_OR) {
             return make_type(TYPE_BOOL, "bool", s->arena);
         }
-        
+
         // Bitwise operators preserve integer type
         if (op == T_BIT_AND || op == T_BIT_OR || op == T_BIT_XOR ||
             op == T_LSHIFT || op == T_RSHIFT || op == T_BIT_NOT) {
@@ -385,9 +401,9 @@ Type *infer_expr_type(Semantic *s, Expr *expr) {
         }
 
         // Arithmetic operators: perform type promotion
-        if (op == T_PLUS || op == T_MIN || op == T_STAR || 
+        if (op == T_PLUS || op == T_MIN || op == T_STAR ||
             op == T_DIV || op == T_MOD) {
-            
+
             // If either is float, result is float
             if (is_float(left_type) || is_float(right_type)) {
                 // Promote to larger float type
@@ -396,17 +412,17 @@ Type *infer_expr_type(Semantic *s, Expr *expr) {
                 }
                 return make_type(TYPE_F32, "f32", s->arena);
             }
-            
+
             // Both are integers, return the larger type
             size_t left_size = get_type_size(left_type);
             size_t right_size = get_type_size(right_type);
-            
+
             // If sizes are equal, prefer unsigned
             if (left_size == right_size) {
                 if (is_unsigned_integer(left_type)) return left_type;
                 if (is_unsigned_integer(right_type)) return right_type;
             }
-            
+
             return (left_size >= right_size) ? left_type : right_type;
         }
 
@@ -421,7 +437,7 @@ Type *infer_expr_type(Semantic *s, Expr *expr) {
         if (expr->as.unary.op == T_NOT) {
             return make_type(TYPE_BOOL, "bool", s->arena);
         }
-        
+
         // Bitwise NOT preserves type
         if (expr->as.unary.op == T_BIT_NOT) {
             return operand_type;
@@ -440,6 +456,7 @@ Type *infer_expr_type(Semantic *s, Expr *expr) {
     }
 
     case AST_FUNCTION: {
+        // @TODO: do the return type checking here.
         // Build function type from return type and parameters
         Type *return_type = type_from_string(s, expr->as.function.ret);
         if (!return_type) {
@@ -529,6 +546,7 @@ Symbol *lookup_symbol(Semantic *s, const char *name) {
 // Statement and Expression Analysis
 // ============================================================================
 
+
 static void analyze_expr(Semantic *s, Expr *expr);
 static void analyze_stmt(Semantic *s, Stmt *stmt);
 
@@ -552,7 +570,7 @@ static void analyze_expr(Semantic *s, Expr *expr) {
         Type *right_type = infer_expr_type(s, expr->as.binary.right);
 
         TokenKind op = expr->as.binary.op;
-        
+
         // Type checking for arithmetic operators
         if (op == T_PLUS || op == T_MIN || op == T_STAR || op == T_DIV || op == T_MOD) {
             if (!is_numeric(left_type)) {
@@ -565,14 +583,14 @@ static void analyze_expr(Semantic *s, Expr *expr) {
                          type_to_string(right_type));
                 s->had_error = true;
             }
-            
+
             // Modulo requires integers
             if (op == T_MOD && (is_float(left_type) || is_float(right_type))) {
                 log_error(expr->loc, "Modulo operator requires integer operands");
                 s->had_error = true;
             }
         }
-        
+
         // Type checking for bitwise operators
         if (op == T_BIT_AND || op == T_BIT_OR || op == T_BIT_XOR ||
             op == T_LSHIFT || op == T_RSHIFT) {
@@ -587,11 +605,11 @@ static void analyze_expr(Semantic *s, Expr *expr) {
                 s->had_error = true;
             }
         }
-        
+
         // Type checking for comparison operators
         if (op == T_EQ || op == T_NEQ || op == T_LT || op == T_GT || op == T_LTE || op == T_GTE) {
             // Operands should be comparable
-            if (!types_equal(left_type, right_type) && 
+            if (!types_equal(left_type, right_type) &&
                 !type_can_assign_to(right_type, left_type) &&
                 !type_can_assign_to(left_type, right_type)) {
                 log_error(expr->loc, "Cannot compare incompatible types: %s and %s",
@@ -599,17 +617,20 @@ static void analyze_expr(Semantic *s, Expr *expr) {
                 s->had_error = true;
             }
         }
-        
+
         // Type checking for logical operators
         if (op == T_AND || op == T_OR) {
-            // Operands should be boolean-ish (integers or bools)
-            if (!is_integer(left_type)) {
-                log_error(expr->loc, "Left operand of logical operation must be boolean/integer, got %s",
+            // Operands should be boolean-ish (integers, bools, or pointers)
+            bool left_ok = is_integer(left_type) || left_type->kind == TYPE_POINTER;
+            bool right_ok = is_integer(right_type) || right_type->kind == TYPE_POINTER;
+            
+            if (!left_ok) {
+                log_error(expr->loc, "Left operand of logical operation must be boolean/integer/pointer, got %s",
                          type_to_string(left_type));
                 s->had_error = true;
             }
-            if (!is_integer(right_type)) {
-                log_error(expr->loc, "Right operand of logical operation must be boolean/integer, got %s",
+            if (!right_ok) {
+                log_error(expr->loc, "Right operand of logical operation must be boolean/integer/pointer, got %s",
                          type_to_string(right_type));
                 s->had_error = true;
             }
@@ -618,10 +639,10 @@ static void analyze_expr(Semantic *s, Expr *expr) {
 
     case AST_UNARY_OP: {
         analyze_expr(s, expr->as.unary.right);
-        
+
         Type *operand_type = infer_expr_type(s, expr->as.unary.right);
         TokenKind op = expr->as.unary.op;
-        
+
         // Unary minus/plus requires numeric type
         if (op == T_MIN || op == T_PLUS) {
             if (!is_numeric(operand_type)) {
@@ -631,16 +652,17 @@ static void analyze_expr(Semantic *s, Expr *expr) {
                 s->had_error = true;
             }
         }
-        
-        // Logical NOT requires boolean/integer
+
+        // Logical NOT requires boolean/integer/pointer
         if (op == T_NOT) {
-            if (!is_integer(operand_type)) {
-                log_error(expr->loc, "Logical NOT requires boolean/integer operand, got %s",
+            bool ok = is_integer(operand_type) || operand_type->kind == TYPE_POINTER;
+            if (!ok) {
+                log_error(expr->loc, "Logical NOT requires boolean/integer/pointer operand, got %s",
                          type_to_string(operand_type));
                 s->had_error = true;
             }
         }
-        
+
         // Bitwise NOT requires integer
         if (op == T_BIT_NOT) {
             if (!is_integer(operand_type)) {
@@ -674,7 +696,7 @@ static void analyze_expr(Semantic *s, Expr *expr) {
         analyze_expr(s, expr->as.call.callee);
 
         Type *callee_type = infer_expr_type(s, expr->as.call.callee);
-        
+
         // Check if callee is actually a function
         if (callee_type->kind != TYPE_FUNCTION) {
             log_error(expr->loc, "Cannot call non-function type %s",
@@ -682,27 +704,27 @@ static void analyze_expr(Semantic *s, Expr *expr) {
             s->had_error = true;
             break;
         }
-        
+
         FunctionType *fn_type = callee_type->as.function;
-        
+
         // Check argument count
         if (expr->as.call.args.count != fn_type->param_count) {
             log_error(expr->loc, "Function expects %zu arguments, got %zu",
                      fn_type->param_count, expr->as.call.args.count);
             s->had_error = true;
         }
-        
+
         // Analyze and type-check each argument
-        size_t arg_count = expr->as.call.args.count < fn_type->param_count 
-                          ? expr->as.call.args.count 
+        size_t arg_count = expr->as.call.args.count < fn_type->param_count
+                          ? expr->as.call.args.count
                           : fn_type->param_count;
-        
+
         for (size_t i = 0; i < arg_count; i++) {
             analyze_expr(s, expr->as.call.args.items[i]);
-            
+
             Type *arg_type = infer_expr_type(s, expr->as.call.args.items[i]);
             Type *param_type = fn_type->param_types[i];
-            
+
             if (!type_can_assign_to(arg_type, param_type)) {
                 log_error(expr->as.call.args.items[i]->loc,
                          "Argument %zu: cannot pass %s to parameter of type %s",
@@ -807,6 +829,86 @@ static void analyze_stmt(Semantic *s, Stmt *stmt) {
         }
     } break;
 
+    case STMT_IF: {
+        // Analyze condition - allows integers, bools, and pointers
+        analyze_expr(s, stmt->as.if_stmt.condition);
+        
+        Type *cond_type = infer_expr_type(s, stmt->as.if_stmt.condition);
+        bool cond_ok = is_integer(cond_type) || cond_type->kind == TYPE_POINTER;
+        
+        if (!cond_ok && cond_type->kind != TYPE_UNKNOWN) {
+            log_error(stmt->loc, "If condition must be boolean/integer/pointer type, got %s",
+                     type_to_string(cond_type));
+            s->had_error = true;
+        }
+
+        // Analyze branches
+        analyze_stmt(s, stmt->as.if_stmt.then_b);
+        if (stmt->as.if_stmt.else_b) {
+            analyze_stmt(s, stmt->as.if_stmt.else_b);
+        }
+    } break;
+
+    case STMT_FOR: {
+        enter_scope(s); // for loop creates its own scope
+
+        // Analyze init
+        if (stmt->as.for_stmt.init) {
+            analyze_stmt(s, stmt->as.for_stmt.init);
+        }
+
+        // Analyze condition (if present)
+        if (stmt->as.for_stmt.condition) {
+            analyze_expr(s, stmt->as.for_stmt.condition);
+            
+            Type *cond_type = infer_expr_type(s, stmt->as.for_stmt.condition);
+            bool cond_ok = is_integer(cond_type) || cond_type->kind == TYPE_POINTER;
+            
+            if (!cond_ok && cond_type->kind != TYPE_UNKNOWN) {
+                log_error(stmt->loc, "For loop condition must be boolean/integer/pointer type, got %s",
+                         type_to_string(cond_type));
+                s->had_error = true;
+            }
+        }
+
+        // Analyze increment
+        if (stmt->as.for_stmt.increment) {
+            analyze_expr(s, stmt->as.for_stmt.increment);
+        }
+
+        // Analyze body
+        analyze_stmt(s, stmt->as.for_stmt.body);
+
+        leave_scope(s);
+    } break;
+
+    case STMT_ENUM_DEF: {
+        // Define enum type in symbol table
+        Symbol enum_sym = {0};
+        enum_sym.name = stmt->as.enum_def.name;
+        enum_sym.kind = SYM_TYPE;
+        enum_sym.type = make_type(TYPE_S32, stmt->as.enum_def.name, s->arena); // Enums are s32
+
+        if (!define_symbol(s, enum_sym)) {
+            log_error(stmt->loc, "Duplicate enum definition '%s'", enum_sym.name);
+            s->had_error = true;
+        }
+
+        // Define each enum variant as a constant
+        for (size_t i = 0; i < stmt->as.enum_def.variants.count; i++) {
+            Symbol variant_sym = {0};
+            variant_sym.name = stmt->as.enum_def.variants.items[i].name;
+            variant_sym.kind = SYM_VAR;
+            variant_sym.type = make_type(TYPE_S32, "s32", s->arena);
+            variant_sym.is_const = true;
+
+            if (!define_symbol(s, variant_sym)) {
+                log_error(stmt->loc, "Duplicate enum variant '%s'", variant_sym.name);
+                s->had_error = true;
+            }
+        }
+    } break;
+
     case STMT_BLOCK: {
         enter_scope(s);
 
@@ -820,7 +922,7 @@ static void analyze_stmt(Semantic *s, Stmt *stmt) {
     case STMT_RET:
         if (stmt->as.expr.expr) {
             analyze_expr(s, stmt->as.expr.expr);
-            // TODO: Check return type matches function declaration
+            // @TODO: Check return type matches function declaration
         }
         break;
 

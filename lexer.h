@@ -21,7 +21,7 @@
 #define ENUM_STR "enum"
 #define CAST_STR "cast"
 #define SIZEOF_STR "sizeof"
-#define NULL_STR "null"
+#define TYPEOF_STR "typeof"
 #define MATCH_STR "match"
 #define IMPORT_STR "import"
 #define DEFER_STR "defer"
@@ -134,6 +134,7 @@ typedef enum {
     T_TYPE,
     T_CAST,
     T_SIZEOF,
+    T_TYPEOF,
     T_MATCH,
     T_IMPORT,
     T_DEFER,
@@ -217,6 +218,7 @@ static inline const char *get_token_str(TokenKind tk) {
     case T_TYPE:     { return "T_TYPE";     } break;
     case T_CAST:     { return "T_CAST";     } break;
     case T_SIZEOF:   { return "T_SIZEOF";   } break;
+    case T_TYPEOF:   { return "T_TYPEOF";   } break;
     case T_MATCH:    { return "T_MATCH";    } break;
     case T_IMPORT:   { return "T_IMPORT";   } break;
     case T_DEFER:    { return "T_DEFER";    } break;
@@ -239,7 +241,6 @@ typedef struct {
     TokenKind tk;
     union {
         char     Char;
-        int64_t  Int64;  // i will just save it as the biggest for now will be handled later.
         uint64_t Uint64; // i will just save it as the biggest for now will be handled later.
         double   F64;    // i will just save it as the biggest for now will be handled later.
         char    *String;

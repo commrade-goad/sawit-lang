@@ -16,7 +16,8 @@ static void cflags(Cmd *cmd) {
 int main(int argc, char **argv) {
     NOB_GO_REBUILD_URSELF(argc, argv);
 
-    cmd_append(&cmd, "cc");
+    /* cmd_append(&cmd, "cc"); */
+    cmd_append(&cmd, "clang");
     cflags(&cmd);
     cmd_append(&cmd, "-o", PROG_NAME);
     cmd_append(&cmd, "nob_inc.c");
