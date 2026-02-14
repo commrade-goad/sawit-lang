@@ -8,5 +8,5 @@ __THIS IS STILL WIP!__
 - [ ] runtime
 - [ ] runtime integrate with libffi
 
-- [ ] All of the token
+- [x] All of the token
 - [ ] All of the AST

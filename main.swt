@@ -10,15 +10,20 @@
 //     return;
 // };
 
-let add = fn (a s32, b s32) -> s32 {
-    return a + b;
-};
+// let add = fn (a s32, b s32) -> s32 {
+//     return a + b;
+// };
 
-let min = 10;
-{
-    let min = fn () -> void { };
-}
-min = 20;
+// let min = 10;
+// {
+//     let min = fn () -> void { };
+// }
+// let second u32 = 200000;
+// min = second;
+
+let third = fn () -> void {};
+let fourth = fn (a s32) -> s32 { return 10; };
+third = fourth;
 
 // let x s32 = add(10, 12);
 // let y = 20;
@@ -27,28 +32,3 @@ min = 20;
 
 // let stuff =
 // "hello";
-
-
-// struct
-// Animal :: type {};
-
-// enum
-// Color :: enum {};
-
-// if & for (no while!)
-// `if (a)` or `if (a) stmt/expr`
-// `for (let i = 0; i < something; i += 1)`
-// `something.for((i, o) :: { do_something() })`
-
-// if behaving like while
-// `for ;; {}`
-// `for ;something != someone; something.next() {}`
-
-// generic like this?
-// so the type with that <?> will be generated when there is atype requested it
-// Vec :: type<T> {
-//     items    <T>[];
-//     count    u64;
-//     capacity u64;
-//     for      fn( *Vec, fn( u64, *<T> )void )*Vec;
-// };
