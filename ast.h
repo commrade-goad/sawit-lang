@@ -138,6 +138,8 @@ struct Stmt {
             char *name;
             Type *type;
             Expr *value;
+            // @TODO: in the future refactor this to a proper flag not just bool like this!
+            bool extern_symbol;
         } let;
 
         struct {

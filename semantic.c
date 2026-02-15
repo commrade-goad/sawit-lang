@@ -57,12 +57,19 @@ bool semantic_check_pass_one(Semantic *s, Statements *st) {
 }
 */
 
+// @TODO: Not Yet Implemented!
 bool semantic_check_pass_one(Semantic *s,  Statements *st) {
     enter_scope(s);
 
     for (size_t i = 0; i < st->count; i++) {
         Stmt *current = st->items[i];
-        (void)current;
+
+        switch (current->type) {
+        case STMT_STRUCT_DEF:   {} break;
+        case STMT_CONST:    {} break;
+        case STMT_LET:      {} break;
+        default: {} break;
+        }
     }
     return false;
 }
@@ -99,7 +106,6 @@ bool define_symbol(Semantic *s, Symbol symbol) {
 Symbol *lookup_symbol(Semantic *s, const char *name) {
     if (!s || !name) return NULL;
 
-    // Search from current scope up to global
     for (Scope *scope = s->current_scope; scope != NULL; scope = scope->parent) {
         for (size_t i = 0; i < scope->symbols.count; i++) {
             if (strcmp(scope->symbols.items[i].name, name) == 0) {

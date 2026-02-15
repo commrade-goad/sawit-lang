@@ -10,6 +10,7 @@
 #define LET_STR "let"
 #define CONST_STR "const"
 #define FN_STR "fn"
+#define EXTERN_STR "extern"
 #define CONTINUE_STR "continue"
 #define BREAK_STR "break"
 #define IF_STR "if"
@@ -129,6 +130,7 @@ typedef enum {
     T_RSHIFT,   // >>
 
     T_LET,
+    T_EXTERN,
     T_FN,
     T_CONST,
     T_RETURN,
@@ -213,6 +215,7 @@ static inline const char *get_token_str(TokenKind tk) {
     case T_LSHIFT:   { return "T_LSHIFT";   } break;
     case T_RSHIFT:   { return "T_RSHIFT";   } break;
     case T_LET:      { return "T_LET";      } break;
+    case T_EXTERN:   { return "T_EXTERN";   } break;
     case T_FN:       { return "T_FN";       } break;
     case T_CONST:    { return "T_CONST";    } break;
     case T_RETURN:   { return "T_RETURN";   } break;

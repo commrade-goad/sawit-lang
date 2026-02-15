@@ -64,6 +64,10 @@ const IAM_A_CONST [5]u8 = b;
 
 // let a = fn () -> Color { return 10 + 2; }();
 
+// @NOTE: to mark a function extern to use using other C library
+let printf = @extern fn (fmt *char, ...) -> s32 {};
+
+
 // let x s32 = add(10, 12);
 // let y = 20;
 

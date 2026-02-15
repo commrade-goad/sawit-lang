@@ -47,4 +47,9 @@ void leave_scope(Semantic *s);
 bool define_symbol(Semantic *s, Symbol symbol);
 Symbol *lookup_symbol(Semantic *s, const char *name);
 
+/*
+bool check_symbol(Semantic *s, Symbol *sym);
+bool check_type(Semantic *s, Type *type);
+*/
+
 #endif /* SEMANTIC_H */

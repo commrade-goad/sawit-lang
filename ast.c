@@ -208,20 +208,29 @@ static Expr *parse_expression(Parser *p, int min_bp) {
         EXPECT_EXIT(p, T_OPARENT);
         if (!check(p, T_CPARENT)) {
             do {
-                if (!check(p, T_IDENT)) {
+                if (!check(p, T_IDENT) && !check(p, T_DOTDOTDOT)) {
                     log_error(peek(p)->loc, "Expecting the parameter to be identifier not %s.", get_token_str(peek(p)->tk));
                     return NULL;
                 }
 
                 Token *name = advance(p);
-                Type *param_type = parse_type(p);
-                if (!param_type) return NULL;
+                Type *param_type = NULL;
+                if (name->tk != T_DOTDOTDOT) {
+                    param_type = parse_type(p);
+                    if (!param_type) return NULL;
+                }
 
-                Param p = {
-                    .name = name->data.String,
-                    .type = param_type,
-                };
-                da_append(&params, p);
+                Param param = {0};
+                if (name->tk == T_DOTDOTDOT) {
+                    param.name = "_";
+                    param.type = make_type(p, TYPE_NAME);
+                    param.type->loc = name->loc;
+                    param.type->as.named.name = "VARIADIC";
+                } else {
+                    param.name = name->data.String;
+                    param.type = param_type;
+                }
+                da_append(&params, param);
             } while (match(p, T_COMMA));
         }
 
@@ -572,6 +581,14 @@ static Stmt *parse_let(Parser *p, Token *kw) {
 
     EXPECT_EXIT(p, T_EQUAL);
 
+    // Check if there is a annotation
+    bool extern_sym = false;
+    if (check(p, T_AT)) {
+        advance(p);
+        EXPECT_EXIT(p, T_EXTERN);
+        extern_sym = true;
+    }
+
     Expr *value = parse_expression(p, 0);
     if (!value) return NULL;
 
@@ -581,6 +598,7 @@ static Stmt *parse_let(Parser *p, Token *kw) {
     stmt->loc = kw->loc;
     stmt->as.let.name = name->data.String;
     stmt->as.let.type = lettype;
+    stmt->as.let.extern_symbol = extern_sym;
     stmt->as.let.value = value;
 
     return stmt;
@@ -762,7 +780,7 @@ static Type *parse_type(Parser *p) {
         tok = peek(p);
 
         // ---------- FUNCTION TYPE ----------
-        if (strcmp(tok->data.String, "fn") == 0) {
+        if (strcmp(tok->data.String, FN_STR) == 0) {
             advance(p); // consume "fn"
 
             EXPECT_EXIT(p, T_OPARENT); // (
@@ -770,7 +788,7 @@ static Type *parse_type(Parser *p) {
             Type *t = make_type(p, TYPE_FUNCTION);
             t->loc = tok->loc;
 
-            // Parse parameter types
+            // Parse Varameter types
             while (!check(p, T_CPARENT)) {
                 Param param = {
                     .name = "",
@@ -923,6 +941,7 @@ void print_stmt(Stmt *s, int indent) {
     case STMT_LET:
         printf("LET %s\n", s->as.let.name);
         if (s->as.let.type) { print_type(s->as.let.type, indent + 1); }
+        print_expr(s->as.let.value, indent + 1);
         break;
 
     case STMT_CONST:
