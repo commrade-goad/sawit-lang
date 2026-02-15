@@ -63,7 +63,7 @@ int main(int argc, char **argv) {
     double elapsed_ms = (double)(end - start) / 1e6;
     printf("Token parsing     : %.3f ms\n", elapsed_ms);
 
-    /* print_token(&tokens); */
+    print_token(&tokens);
 
 
     // == AST-ING

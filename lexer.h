@@ -9,7 +9,6 @@
 
 #define LET_STR "let"
 #define CONST_STR "const"
-#define TYPE_STR "type"
 #define FN_STR "fn"
 #define CONTINUE_STR "continue"
 #define BREAK_STR "break"
@@ -20,6 +19,7 @@
 #define TRUE_STR "true"
 #define FALSE_STR "false"
 #define ENUM_STR "enum"
+#define TYPE_STR "struct"
 #define CAST_STR "cast"
 #define SIZEOF_STR "sizeof"
 #define TYPEOF_STR "typeof"

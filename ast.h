@@ -27,7 +27,8 @@ typedef enum {
     STMT_IF,       // if (a) {} else {}
     STMT_FOR,      // for (init; cond; inc) body
     STMT_BLOCK,    // { stmt1; stmt2; }
-    STMT_ENUM_DEF, // Color :: enum { white; black; };
+    STMT_ENUM_DEF,
+    STMT_STRUCT_DEF,
 } StmtType;
 
 typedef struct Expr Expr;
@@ -66,6 +67,18 @@ typedef struct {
     size_t count;
     size_t capacity;
 } EnumVariants;
+
+typedef struct {
+    char *name;
+    char *type;
+    Expr *value;
+} StructureMember;
+
+typedef struct {
+    StructureMember *items;
+    size_t count;
+    size_t capacity;
+} Structure;
 
 typedef struct {
     Tokens *tokens;
@@ -111,11 +124,16 @@ struct Stmt {
             Stmt *body;
         } for_stmt;
 
-        // Color :: enum { white; black; };
         struct {
             char *name;
             EnumVariants variants;
         } enum_def;
+
+        // @TODO: this is a really bad type name update that later
+        struct {
+            char *name;
+            Structure members;
+        } struct_def;
 
         // { ... }
         struct {

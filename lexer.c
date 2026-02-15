@@ -197,6 +197,9 @@ inline static void make_ident_or_n(Tokens *t, String_Builder *sb, SrcLoc loc) {
     } else if (strcmp(tmp, ENUM_STR) == 0) {
         n.tk       = T_ENUM;
         is_keyword = true;
+    } else if (strcmp(tmp, TYPE_STR) == 0) {
+        n.tk       = T_TYPE;
+        is_keyword = true;
     } else if (strcmp(tmp, CAST_STR) == 0) {
         n.tk       = T_CAST;
         is_keyword = true;

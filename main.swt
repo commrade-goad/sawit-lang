@@ -53,10 +53,11 @@ enum Color = {
      BLUE;
 };
 
-// struct Point = {
-//        x f32;
-//        y f32;
-// };
+struct Point = {
+       x f32;
+       y f32;
+};
+
 const IAM_A_CONST = b;
 const IAM_A_CONST []u8 = b;
 

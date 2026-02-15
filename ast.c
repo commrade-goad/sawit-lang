@@ -152,6 +152,7 @@ static Stmt *parse_if(Parser *p, Token *kw);
 static Stmt *parse_for(Parser *p, Token *kw);
 static Stmt *parse_enum(Parser *p, Token *name_tok);
 static Stmt *parse_const(Parser *p, Token *name_tok);
+static Stmt *parse_struct(Parser *p, Token *name_tok);
 
 static Expr *parse_expression(Parser *p, int min_bp) {
     Expr *lhs;
@@ -507,59 +508,54 @@ static Stmt *parse_enum(Parser *p, Token *btok) {
     return stmt;
 }
 
-/*
-static Stmt *parse_enum_or_const_or_struct_def(Parser *p, Token *name_tok) {
-    EXPECT_EXIT(p, T_DCOLON);
-
-    if (check(p, T_ENUM)) {
-        Stmt *stmt = make_stmt(STMT_ENUM_DEF, p->arena);
-        stmt->loc = name_tok->loc;
-        stmt->as.enum_def.name = name_tok->data.String;
-        stmt->as.enum_def.variants = (EnumVariants){0};
-
-        EXPECT_EXIT(p, T_ENUM);
-        EXPECT_EXIT(p, T_OCPARENT);
-
-        int64_t current_value = 0;
-
-        while (!check(p, T_CCPARENT)) {
-            Token *variant_tok = peek(p);
-            EXPECT_EXIT(p, T_IDENT);
-
-            EnumVariant variant = {
-                .name = variant_tok->data.String,
-                .value = current_value++
-            };
-
-            if (check(p, T_EQUAL)) {
-                advance(p);
-                Token *current = peek(p);
-                if (current && current->tk == T_NUM) {
-                    current_value = current->data.Uint64;
-                    variant.value = current_value++;
-                    advance(p);
-                } else {
-                    log_error(current->loc, "Expected an integer for the value but got %s", get_token_str(current->tk));
-                    return NULL;
-                }
-            }
-            da_append(&stmt->as.enum_def.variants, variant);
-
-            if (!match(p, T_CLOSING)) {
-                break;
-            }
-        }
-
-        EXPECT_EXIT(p, T_CCPARENT);
-        EXPECT_EXIT(p, T_CLOSING);
-
-        return stmt;
-    } else if (check(p, T_STRUCT)) {
+// @TODO: not done yet
+static Stmt *parse_struct(Parser *p, Token *kw) {
+    Token *nametk = peek(p);
+    if (!check(p, T_IDENT)) {
+        log_error(nametk->loc, "struct statement expected token %s, but got %s", get_token_str(T_IDENT), get_token_str(nametk->tk));
         return NULL;
-    } else {
     }
+    advance(p);
+
+    EXPECT_EXIT(p, T_EQUAL);
+    EXPECT_EXIT(p, T_OCPARENT);
+    Stmt * stmt = make_stmt(STMT_STRUCT_DEF, p->arena);
+    size_t region_size = sizeof(char) * strlen(nametk->data.String);
+    char *region = arena_alloc(p->arena, region_size + 1);
+    strncpy(region, nametk->data.String, region_size);
+    region[region_size] = '\0';
+    stmt->as.struct_def.name = region;
+    stmt->loc = kw->loc;
+
+    while (!check(p, T_CCPARENT)) {
+        Token *variant_tok = peek(p);
+        EXPECT_EXIT(p, T_IDENT);
+
+        Token *variant_type = peek(p);
+        if (!check(p, T_IDENT)) {
+            log_error(variant_type->loc, "Struct statements expected type identifier but got %s", get_token_str(variant_type->tk));
+            return NULL;
+        }
+        advance(p);
+
+        StructureMember member = {
+            .name = variant_tok->data.String,
+            .type = variant_type->data.String,
+            .value = NULL, // @TODO: for now didnt support default value but will be supported later.
+        };
+
+        da_append(&stmt->as.struct_def.members, member);
+
+        if (!match(p, T_CLOSING)) {
+            break;
+        }
+    }
+
+    EXPECT_EXIT(p, T_CCPARENT);
+    EXPECT_EXIT(p, T_CLOSING);
+
+    return stmt;
 }
-*/
 
 static Stmt *parse_return(Parser *p, Token *kw) {
     Stmt *stmt = make_stmt(STMT_RET, p->arena);
@@ -661,12 +657,10 @@ static Stmt *parse_statement(Parser *p) {
         return parse_enum(p, kw);
     }
 
-    /*
     if (match(p, T_TYPE)) {
         Token *kw = previous(p);
         return parse_struct(p, kw);
     }
-    */
 
     Expr *expr = parse_expression(p, 0);
     if (!expr) return NULL;
@@ -786,6 +780,16 @@ void print_stmt(Stmt *s, int indent) {
             printf("VARIANT(%s = %ld)\n",
                    s->as.enum_def.variants.items[i].name,
                    s->as.enum_def.variants.items[i].value);
+        }
+        break;
+
+    case STMT_STRUCT_DEF:
+        printf("STRUCT %s\n", s->as.struct_def.name);
+        for (size_t i = 0; i < s->as.struct_def.members.count; i++) {
+            print_indent(indent + 1);
+            printf("MEMBER(%s: %s)\n",
+                   s->as.struct_def.members.items[i].name,
+                   s->as.struct_def.members.items[i].type);
         }
         break;
 
