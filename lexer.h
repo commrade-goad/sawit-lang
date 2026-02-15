@@ -40,6 +40,8 @@
 #define CCPARENT_CHR '}'
 #define OPARENT_CHR '('
 #define CPARENT_CHR ')'
+#define OSPARENT_CHR '['
+#define CSPARENT_CHR ']'
 #define CLOSING_CHR ';'
 #define EQUAL_CHR '='
 #define COLON_CHR ':'

@@ -33,6 +33,7 @@ typedef enum {
 
 typedef struct Expr Expr;
 typedef struct Stmt Stmt;
+typedef struct Type Type;
 
 typedef struct {
     Stmt   **items;
@@ -42,7 +43,7 @@ typedef struct {
 
 typedef struct {
     char *name;
-    char *type;
+    Type *type;
 } Param;
 
 typedef struct {
@@ -70,7 +71,7 @@ typedef struct {
 
 typedef struct {
     char *name;
-    char *type;
+    Type *type;
     Expr *value;
 } StructureMember;
 
@@ -86,6 +87,42 @@ typedef struct {
     Arena *arena;
 } Parser;
 
+typedef enum {
+    TYPE_NAME,      // int, MyStruct, Foo
+    TYPE_POINTER,   // *T
+    TYPE_ARRAY,     // T[]
+    TYPE_FUNCTION,  // fn(T1, T2) -> T3
+} TypeKind;
+
+struct Type {
+    TypeKind kind;
+    SrcLoc loc;
+
+    union {
+        // int, MyStruct
+        struct {
+            char *name;
+        } named;
+
+        // *T
+        struct {
+            Type *base;
+        } pointer;
+
+        // T[]
+        struct {
+            Type *element;
+            Expr *size;
+        } array;
+
+        // fn(T1, T2) -> T3
+        struct {
+            Type *ret;
+            Params params;
+        } function;
+    } as;
+};
+
 struct Stmt {
     StmtType type;
     SrcLoc loc;
@@ -99,13 +136,13 @@ struct Stmt {
         // let a = expr;
         struct {
             char *name;
-            char *type;
+            Type *type;
             Expr *value;
         } let;
 
         struct {
             char *name;
-            char *type;
+            Type *type;
             Expr *value;
         } const_stmt;
 
@@ -167,7 +204,7 @@ struct Expr {
 
         // function
         struct {
-            char *ret;
+            Type *ret;
             Params params;
             Stmt *body;   // must be block
         } function;

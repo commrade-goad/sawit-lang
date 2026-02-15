@@ -2,6 +2,7 @@
 #include "lexer.h"
 
 #define BIGGEST_POWER 40
+// TODO: parse expression with array index
 
 #define EXPECT_EXIT(p, toktype) \
     do { if(!expect((p), (toktype))) return NULL; } while(0)
@@ -144,6 +145,11 @@ static int infix_binding_power(TokenKind tk, int *left_bp, int *right_bp) {
     }
 }
 
+// THIS IS DUMB
+static Type *make_type(Parser *p, TypeKind kind);
+static Type *parse_type(Parser *p);
+static void print_type(Type *t, int indent);
+
 static Stmt *parse_statement(Parser *p);
 static Stmt *parse_return(Parser *p, Token *kw);
 static Stmt *parse_let(Parser *p, Token *kw);
@@ -208,18 +214,12 @@ static Expr *parse_expression(Parser *p, int min_bp) {
                 }
 
                 Token *name = advance(p);
-                Token *typename = NULL;
+                Type *param_type = parse_type(p);
+                if (!param_type) return NULL;
 
-                if (check(p, T_IDENT)) {
-                    typename = peek(p);
-                    advance(p);
-                } else {
-                    log_error(name->loc, "Expecting the parameter type after the name.");
-                    return NULL;
-                }
                 Param p = {
                     .name = name->data.String,
-                    .type = typename ? typename->data.String : CTCHK
+                    .type = param_type,
                 };
                 da_append(&params, p);
             } while (match(p, T_COMMA));
@@ -227,26 +227,15 @@ static Expr *parse_expression(Parser *p, int min_bp) {
 
         if (match(p, T_CPARENT) && check(p, T_ARROW)) {
             advance(p);
-            Token *retval = peek(p);
-
-            if (check(p, T_IDENT)) {
-                advance(p);
-            } else {
-                if (!retval) return NULL;
-                log_error(retval->loc, "Expected a return value instead got %s", get_token_str(retval->tk));
-                return NULL;
-            }
+            Type *ret_type = parse_type(p);
+            if (!ret_type) return NULL;
 
             EXPECT_EXIT(p, T_OCPARENT);
             Token *kw = previous(p);
             Stmt *body = parse_block(p, kw);
 
             lhs = make_expr(AST_FUNCTION, p->arena);
-            if (retval) {
-                lhs->as.function.ret = retval->data.String;
-            } else {
-                lhs->as.function.ret = CTCHK;
-            }
+            lhs->as.function.ret = ret_type;
             lhs->as.function.body = body;
             lhs->as.function.params = params;
             lhs->loc = before->loc;
@@ -432,12 +421,11 @@ static Stmt *parse_const(Parser *p, Token *btok) {
         return NULL;
     }
     advance(p);
-    Token *consttype = NULL;
-    if (check(p, T_IDENT)) {
-        consttype = peek(p);
-        advance(p);
-    }
+
+    Type *consttype = NULL;
+    if (!check(p, T_EQUAL)) consttype = parse_type(p);
     EXPECT_EXIT(p, T_EQUAL);
+
     current = peek(p);
     Expr *exp = parse_expression(p, 0);
     if (!exp) {
@@ -448,7 +436,7 @@ static Stmt *parse_const(Parser *p, Token *btok) {
     const_stmt->loc = btok->loc;
     const_stmt->as.const_stmt.name = current->data.String;
     const_stmt->as.const_stmt.value = exp;
-    const_stmt->as.const_stmt.type = consttype ? consttype->data.String : CTCHK;
+    const_stmt->as.const_stmt.type = consttype ? consttype : NULL;
 
     EXPECT_EXIT(p, T_CLOSING);
     return const_stmt;
@@ -531,12 +519,8 @@ static Stmt *parse_struct(Parser *p, Token *kw) {
         Token *variant_tok = peek(p);
         EXPECT_EXIT(p, T_IDENT);
 
-        Token *variant_type = peek(p);
-        if (!check(p, T_IDENT)) {
-            log_error(variant_type->loc, "Struct statements expected type identifier but got %s", get_token_str(variant_type->tk));
-            return NULL;
-        }
-        advance(p);
+        Type *variant_type = parse_type(p);
+        if (!variant_type) return NULL;
 
         Expr *value = NULL;
         if (check(p, T_EQUAL)) {
@@ -547,7 +531,7 @@ static Stmt *parse_struct(Parser *p, Token *kw) {
 
         StructureMember member = {
             .name = variant_tok->data.String,
-            .type = variant_type->data.String,
+            .type = variant_type,
             .value = value,
         };
 
@@ -583,11 +567,8 @@ static Stmt *parse_let(Parser *p, Token *kw) {
     Token *name = peek(p);
     EXPECT_EXIT(p, T_IDENT);
 
-    Token *lettype = NULL;
-    if (check(p, T_IDENT)) {
-        lettype = peek(p);
-        EXPECT_EXIT(p, T_IDENT);
-    }
+    Type *lettype = NULL;
+    if (!check(p, T_EQUAL)) lettype = parse_type(p);
 
     EXPECT_EXIT(p, T_EQUAL);
 
@@ -599,11 +580,7 @@ static Stmt *parse_let(Parser *p, Token *kw) {
     Stmt *stmt = make_stmt(STMT_LET, p->arena);
     stmt->loc = kw->loc;
     stmt->as.let.name = name->data.String;
-    if (lettype) {
-        stmt->as.let.type = lettype->data.String;
-    } else {
-        stmt->as.let.type = CTCHK;
-    }
+    stmt->as.let.type = lettype;
     stmt->as.let.value = value;
 
     return stmt;
@@ -722,11 +699,14 @@ void print_expr(Expr *e, int indent) {
         break;
 
     case AST_FUNCTION:
-        printf("FUNCTION(%s)\n", e->as.function.ret);
+        printf("FUNCTION\n");
+
+        if (e->as.function.ret) { print_type(e->as.function.ret, indent + 1); }
         for (size_t i = 0; i < e->as.function.params.count; i++) {
             print_indent(indent + 1);
             Param p = e->as.function.params.items[i];
-            printf("PARAM(%s: %s)\n", p.name, p.type);
+            printf("PARAM: %s\n", p.name);
+            if (p.type) { print_type(p.type, indent + 1); }
         }
         print_stmt(e->as.function.body, indent + 1);
         break;
@@ -737,6 +717,136 @@ void print_expr(Expr *e, int indent) {
         for (size_t i = 0; i < e->as.call.args.count; i++) {
             print_expr(e->as.call.args.items[i], indent + 1);
         }
+        break;
+    }
+}
+
+static Type *parse_type(Parser *p) {
+    Token *tok = peek(p);
+
+    // ---------- ARRAY ----------
+    if (check(p, T_OSPARENT)) {  // [
+        advance(p);
+
+        Expr *count = NULL;
+        if (!check(p, T_CSPARENT)) {
+            count = parse_expression(p, 0);
+        }
+        EXPECT_EXIT(p, T_CSPARENT); // ]
+
+        Type *element = parse_type(p);
+        if (!element) return NULL;
+
+        Type *t = make_type(p, TYPE_ARRAY);
+        t->loc = tok->loc;
+        t->as.array.element = element;
+        t->as.array.size = count;
+        return t;
+    }
+
+    // ---------- POINTER ----------
+    if (check(p, T_STAR)) {  // *
+        advance(p);
+
+        Type *base = parse_type(p);
+        if (!base) return NULL;
+
+        Type *t = make_type(p, TYPE_POINTER);
+        t->loc = tok->loc;
+        t->as.pointer.base = base;
+        return t;
+    }
+
+    // ---------- NAMED OR FUNCTION ----------
+    if (check(p, T_IDENT)) {
+        tok = peek(p);
+
+        // ---------- FUNCTION TYPE ----------
+        if (strcmp(tok->data.String, "fn") == 0) {
+            advance(p); // consume "fn"
+
+            EXPECT_EXIT(p, T_OPARENT); // (
+
+            Type *t = make_type(p, TYPE_FUNCTION);
+            t->loc = tok->loc;
+
+            // Parse parameter types
+            while (!check(p, T_CPARENT)) {
+                Param param = {
+                    .name = "",
+                    .type = parse_type(p),
+                };
+                if (!param.type) return NULL;
+
+                da_append(&t->as.function.params, param);
+
+                if (!check(p, T_COMMA))
+                    break;
+
+                advance(p); // consume ,
+            }
+
+            EXPECT_EXIT(p, T_CPARENT); // )
+
+            // Expect ->
+            EXPECT_EXIT(p, T_ARROW);
+
+            // Parse return type
+            Type *ret = parse_type(p);
+            if (!ret) return NULL;
+
+            t->as.function.ret = ret;
+
+            return t;
+        }
+
+        // ---------- NORMAL NAMED TYPE ----------
+        advance(p);
+
+        Type *t = make_type(p, TYPE_NAME);
+        t->loc = tok->loc;
+        t->as.named.name = tok->data.String;
+        return t;
+    }
+
+    log_error(tok->loc, "Expected type, got %s", get_token_str(tok->tk));
+    return NULL;
+}
+
+static Type *make_type(Parser *p, TypeKind kind) {
+    Type *k = (Type *)arena_alloc(p->arena, sizeof(Type));
+    k->kind = kind;
+    return k;
+}
+
+static void print_type(Type *t, int indent) {
+    if (!t) return;
+
+    print_indent(indent);
+
+    switch (t->kind) {
+    case TYPE_NAME:
+        printf("TYPE(%s)\n", t->as.named.name);
+        break;
+
+    case TYPE_POINTER:
+        printf("POINTER\n");
+        print_type(t->as.pointer.base, indent + 1);
+        break;
+
+    case TYPE_ARRAY:
+        printf("ARRAY");
+        if (t->as.array.size) {
+            print_indent(indent);
+            printf("SIZE:");
+            print_expr(t->as.array.size, 0);
+        } else printf("\n");
+        print_type(t->as.array.element, indent + 1);
+        break;
+
+    case TYPE_FUNCTION:
+        printf("FUNCTION TYPE\n");
+        print_type(t->as.function.ret, indent + 1);
         break;
     }
 }
@@ -794,9 +904,9 @@ void print_stmt(Stmt *s, int indent) {
         printf("STRUCT %s\n", s->as.struct_def.name);
         for (size_t i = 0; i < s->as.struct_def.members.count; i++) {
             print_indent(indent + 1);
-            printf("MEMBER(%s: %s)\n",
-                   s->as.struct_def.members.items[i].name,
-                   s->as.struct_def.members.items[i].type);
+            printf("MEMBER: %s\n",
+                   s->as.struct_def.members.items[i].name);
+            if (s->as.struct_def.members.items[i].type) { print_type(s->as.struct_def.members.items[i].type, indent + 1); }
             if (s->as.struct_def.members.items[i].value) {
                 print_indent(indent + 2);
                 printf("VALUE:");
@@ -811,12 +921,13 @@ void print_stmt(Stmt *s, int indent) {
         break;
 
     case STMT_LET:
-        printf("LET %s: %s\n", s->as.let.name, s->as.let.type);
-        print_expr(s->as.let.value, indent + 1);
+        printf("LET %s\n", s->as.let.name);
+        if (s->as.let.type) { print_type(s->as.let.type, indent + 1); }
         break;
 
     case STMT_CONST:
-        printf("CONST %s: %s\n", s->as.let.name, s->as.let.type);
+        printf("CONST %s\n", s->as.let.name);
+        if (s->as.let.type) { print_type(s->as.const_stmt.type, indent + 1); }
         print_expr(s->as.const_stmt.value, indent + 1);
         break;
 

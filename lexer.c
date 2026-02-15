@@ -319,6 +319,8 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
         case CPARENT_CHR:
         case OCPARENT_CHR:
         case CCPARENT_CHR:
+        case OSPARENT_CHR:
+        case CSPARENT_CHR:
         case COLON_CHR:
         case LESS_CHR:
         case GREATER_CHR:
@@ -469,6 +471,14 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             } else {
                 t.tk = T_EQUAL;
             }
+            da_append(tokens, t);
+        } break;
+        case OSPARENT_CHR: {
+            t.tk = T_OSPARENT;
+            da_append(tokens, t);
+        } break;
+        case CSPARENT_CHR: {
+            t.tk = T_CSPARENT;
             da_append(tokens, t);
         } break;
         case OPARENT_CHR: {
