@@ -508,7 +508,7 @@ static Stmt *parse_enum(Parser *p, Token *btok) {
     return stmt;
 }
 
-// @TODO: not done yet
+// @TODO: add support for generics later on!
 static Stmt *parse_struct(Parser *p, Token *kw) {
     Token *nametk = peek(p);
     if (!check(p, T_IDENT)) {
@@ -538,10 +538,17 @@ static Stmt *parse_struct(Parser *p, Token *kw) {
         }
         advance(p);
 
+        Expr *value = NULL;
+        if (check(p, T_EQUAL)) {
+            advance(p);
+            value = parse_expression(p, 0);
+            if (!value) return NULL;
+        }
+
         StructureMember member = {
             .name = variant_tok->data.String,
             .type = variant_type->data.String,
-            .value = NULL, // @TODO: for now didnt support default value but will be supported later.
+            .value = value,
         };
 
         da_append(&stmt->as.struct_def.members, member);
@@ -790,6 +797,11 @@ void print_stmt(Stmt *s, int indent) {
             printf("MEMBER(%s: %s)\n",
                    s->as.struct_def.members.items[i].name,
                    s->as.struct_def.members.items[i].type);
+            if (s->as.struct_def.members.items[i].value) {
+                print_indent(indent + 2);
+                printf("VALUE:");
+                print_expr(s->as.struct_def.members.items[i].value, 0);
+            }
         }
         break;
 
