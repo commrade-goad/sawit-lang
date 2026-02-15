@@ -45,7 +45,7 @@
 // >> foreign
 // combine enum and struct since enum is just integer member of struct that is a const
 
-let b []u8 = "yes";
+// let b []u8 = "yes";
 
 enum Color = {
      RED = 0; 
@@ -62,16 +62,18 @@ struct Point = {
 const IAM_A_CONST = b;
 const IAM_A_CONST [5]u8 = b;
 
-// let a = fn () -> Color { return 10 + 2; }();
+let a = fn () -> Color { return 10 + 2; }();
 
 // @NOTE: to mark a function extern to use using other C library
 let printf = @extern fn (fmt *char, ...) -> s32 {};
 
+stuff[20] = a;
+
 
 // let x s32 = add(10, 12);
-// let y = 20;
+y = 20;
 
-// add(10, 20);
+add(10, 20);
 
 // let stuff =
 // "hello";

@@ -17,6 +17,7 @@ typedef enum {
     AST_ASSIGN,
     AST_FUNCTION,
     AST_CALL,
+    AST_INDEX,
 } ExprType;
 
 typedef enum {
@@ -198,9 +199,15 @@ struct Expr {
             Expr *right;
         } unary;
 
+        // a[stuff]
+        struct {
+            Expr *object;
+            Expr *index;
+        } index;
+
         // a = expr;
         struct {
-            char *name;
+            Expr *target;
             Expr *value;
         } assign;
 

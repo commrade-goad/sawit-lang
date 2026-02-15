@@ -2,7 +2,6 @@
 #include "lexer.h"
 
 #define BIGGEST_POWER 40
-// TODO: parse expression with array index
 
 #define EXPECT_EXIT(p, toktype) \
     do { if(!expect((p), (toktype))) return NULL; } while(0)
@@ -283,15 +282,10 @@ static Expr *parse_expression(Parser *p, int min_bp) {
     // Infix Loop
     while (1) {
         Token *next = peek(p);
-        int left_bp, right_bp;
-        if (!infix_binding_power(next->tk, &left_bp, &right_bp))
-            break;
 
-        if (left_bp < min_bp)
-            break;
-
+        // ---------- FUNCTION CALL ----------
         if (next->tk == T_OPARENT) {
-            Token *before = previous(p);
+            Token *before = next;
             advance(p); // consume '('
 
             Args args = {0};
@@ -315,19 +309,47 @@ static Expr *parse_expression(Parser *p, int min_bp) {
             continue;
         }
 
+        // ---------- INDEXING ----------
+        if (next->tk == T_OSPARENT) {
+            Token *before = next;
+            advance(p); // consume '['
+
+            Expr *index_expr = parse_expression(p, 0);
+            if (!index_expr) return NULL;
+
+            EXPECT_EXIT(p, T_CSPARENT);
+
+            Expr *idx = make_expr(AST_INDEX, p->arena);
+            idx->as.index.object = lhs;
+            idx->as.index.index = index_expr;
+            idx->loc = before->loc;
+
+            lhs = idx;
+            continue;
+        }
+
+        // ---------- NORMAL INFIX ----------
+        int left_bp, right_bp;
+        if (!infix_binding_power(next->tk, &left_bp, &right_bp))
+            break;
+
+        if (left_bp < min_bp)
+            break;
+
         TokenKind op = next->tk;
         advance(p);
+
         Expr *rhs = parse_expression(p, right_bp);
         if (!rhs) return NULL;
 
         if (op == T_EQUAL) {
-            if (lhs->type != AST_IDENTIFIER) {
-                log_error(lhs->loc, "Invalid assignment target expected identifier.");
+            if (lhs->type != AST_IDENTIFIER && lhs->type != AST_INDEX) {
+                log_error(lhs->loc, "Invalid assignment target.");
                 return NULL;
             }
 
             Expr *assign = make_expr(AST_ASSIGN, p->arena);
-            assign->as.assign.name = lhs->as.identifier;
+            assign->as.assign.target = lhs;
             assign->as.assign.value = rhs;
             assign->loc = next->loc;
 
@@ -432,7 +454,10 @@ static Stmt *parse_const(Parser *p, Token *btok) {
     advance(p);
 
     Type *consttype = NULL;
-    if (!check(p, T_EQUAL)) consttype = parse_type(p);
+    if (!check(p, T_EQUAL)) {
+        consttype = parse_type(p);
+        if (!consttype) return NULL;
+    }
     EXPECT_EXIT(p, T_EQUAL);
 
     current = peek(p);
@@ -577,7 +602,10 @@ static Stmt *parse_let(Parser *p, Token *kw) {
     EXPECT_EXIT(p, T_IDENT);
 
     Type *lettype = NULL;
-    if (!check(p, T_EQUAL)) lettype = parse_type(p);
+    if (!check(p, T_EQUAL)) {
+        lettype = parse_type(p);
+        if (!lettype) return NULL;
+    }
 
     EXPECT_EXIT(p, T_EQUAL);
 
@@ -712,7 +740,8 @@ void print_expr(Expr *e, int indent) {
         break;
 
     case AST_ASSIGN:
-        printf("ASSIGN(%s)\n", e->as.assign.name);
+        printf("ASSIGN\n");
+        print_expr(e->as.assign.target, indent + 1);
         print_expr(e->as.assign.value, indent + 1);
         break;
 
@@ -736,6 +765,11 @@ void print_expr(Expr *e, int indent) {
             print_expr(e->as.call.args.items[i], indent + 1);
         }
         break;
+    case AST_INDEX:
+        printf("INDEXING\n");
+        print_expr(e->as.index.object, indent + 1);
+        print_expr(e->as.index.index, indent + 1);
+    break;
     }
 }
 
@@ -940,6 +974,8 @@ void print_stmt(Stmt *s, int indent) {
 
     case STMT_LET:
         printf("LET %s\n", s->as.let.name);
+        print_indent(indent);
+        printf("%s\n", s->as.let.extern_symbol ? "EXTERN" : "IN");
         if (s->as.let.type) { print_type(s->as.let.type, indent + 1); }
         print_expr(s->as.let.value, indent + 1);
         break;
