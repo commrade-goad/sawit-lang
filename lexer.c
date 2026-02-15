@@ -3,6 +3,36 @@
 #include <math.h>
 #include "utils.h"
 
+static void write_to_sb(Rune *r, String_Builder *sb, char *rune_start) {
+    sb_appendf(sb, "%.*s", (int)r->width, rune_start);
+}
+
+Rune utf8_next(const unsigned char *s) {
+    Rune r = {0};
+
+    if (s[0] < 0x80) {
+        r.codepoint = s[0];
+        r.width = 1;
+    } else if ((s[0] & 0xE0) == 0xC0) {
+        r.codepoint = ((s[0] & 0x1F) << 6) |
+                      (s[1] & 0x3F);
+        r.width = 2;
+    } else if ((s[0] & 0xF0) == 0xE0) {
+        r.codepoint = ((s[0] & 0x0F) << 12) |
+                      ((s[1] & 0x3F) << 6) |
+                      (s[2] & 0x3F);
+        r.width = 3;
+    } else {
+        r.codepoint = ((s[0] & 0x07) << 18) |
+                      ((s[1] & 0x3F) << 12) |
+                      ((s[2] & 0x3F) << 6) |
+                      (s[3] & 0x3F);
+        r.width = 4;
+    }
+
+    return r;
+}
+
 int is_uint(const char *s, uint64_t *res) {
     char *end;
     errno = 0;
@@ -50,6 +80,31 @@ char *peek(InternalCursor *cur, size_t n) {
     return cur->cursor + n;
 }
 
+static Rune next_rune(InternalCursor *cur) {
+    Rune r = {0};
+
+    if (!cur || cur->offset >= cur->data->count) {
+        return r;
+    }
+
+    unsigned char *s = (unsigned char *)cur->cursor;
+    r = utf8_next(s);
+
+    // newline check (ASCII only)
+    if (r.codepoint == '\n') {
+        cur->line++;
+        cur->col = 1;
+    } else {
+        cur->col++;
+    }
+
+    cur->cursor += r.width;
+    cur->offset += r.width;
+
+    return r;
+}
+
+/* @NOTE: will be DEPRECATED LATER */
 char *next(InternalCursor *cur) {
     if (!cur || !cur->data) return NULL;
     if (cur->offset >= cur->data->count) return NULL;
@@ -73,35 +128,6 @@ char *next(InternalCursor *cur) {
 bool peek_expect(InternalCursor *cur, size_t n, char expect) {
     char *p = peek(cur, n);
     return p && *p == expect;
-}
-
-char *next_until(InternalCursor *cur, char ch) {
-    if (!cur) return NULL;
-
-    char *p;
-    do {
-        p = next(cur);
-        if (!p) return NULL;
-    } while (*p != ch);
-
-    return cur->cursor;
-}
-
-char *next_until_nl(InternalCursor *cur) {
-    if (!cur) return NULL;
-
-    char *p;
-    do {
-        p = next(cur);
-        if (!p) return NULL;
-    } while (*p != '\n' && *p != '\r');
-
-    if (*p == '\r') {
-        char *n = peek(cur, 0);
-        if (n && *n == '\n') next(cur);
-    }
-
-    return cur->cursor;
 }
 
 char *flush_buffer(String_Builder *sb) {
@@ -249,19 +275,24 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
         size_t line = cur.line;
         size_t col  = cur.col;
 
-        char *p = next(&cur);
-        if (!p) break;
-        char ch = *p;
+        Rune r = next_rune(&cur);
+        uint32_t ch = r.codepoint;
 
         /* // comment */
         if (ch == COMMENT_CHR2 && peek_expect(&cur, 0, COMMENT_CHR2)) {
-            next(&cur);
-            next_until_nl(&cur);
+            next_rune(&cur);
+            while (cur.offset < cur.data->count) {
+                Rune rr = next_rune(&cur);
+                if (rr.codepoint == '\n') break;
+            }
             continue;
         }
         /* # comment */
         if (ch == COMMENT_CHR) {
-            next_until_nl(&cur);
+            while (cur.offset < cur.data->count) {
+                Rune rr = next_rune(&cur);
+                if (rr.codepoint == '\n') break;
+            }
             continue;
         }
         SrcLoc currentloc = (SrcLoc){
@@ -307,41 +338,45 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
         switch (ch) {
         case STRING_CHR: {
             while (true) {
-                p = next(&cur);
-
-                if (!p) {
-                    ret = false;
+                if (cur.offset >= cur.data->count) {
                     log_error(currentloc, "Unexpected EOF in string");
                     return false;
                 }
-                if (*p == STRING_CHR) break;
-                if (*p == '\n') {
-                    ret = false;
+
+                char *rune_start = cur.cursor;
+                Rune sr = next_rune(&cur);
+                uint32_t sch = sr.codepoint;
+
+                if (sch == STRING_CHR) break;
+
+                if (sch == '\n') {
                     log_error(currentloc, "Unclosed string blocks");
                     return false;
                 }
 
-                if (*p == '\\') {
-                    char *esc = next(&cur);
-                    if (!esc) {
-                        ret = false;
-                        log_error(currentloc,"trailing backslash at end of file");
+                if (sch == '\\') {
+                    if (cur.offset >= cur.data->count) {
+                        log_error(currentloc, "Trailing backslash at EOF");
                         return false;
                     }
 
-                    switch (*esc) {
+                    Rune esc = next_rune(&cur);
+                    switch (esc.codepoint) {
                     case 'n':  sb_appendf(&sb, "\n"); break;
                     case 't':  sb_appendf(&sb, "\t"); break;
                     case 'r':  sb_appendf(&sb, "\r"); break;
                     case '\\': sb_appendf(&sb, "\\"); break;
                     case '"':  sb_appendf(&sb, "\""); break;
-                    case '0':  sb_appendf(&sb, "\\0"); break;
+                    case '0': {
+                        char zero = '\0';
+                        sb_appendf(&sb, "%c", zero);
+                    }  break;
                     default:
-                        sb_appendf(&sb, "%c", *esc);
+                        write_to_sb(&esc, &sb, cur.cursor - esc.width);
                         break;
                     }
                 } else {
-                    sb_appendf(&sb, "%c", *p);
+                    write_to_sb(&sr, &sb, rune_start);
                 }
             }
 
@@ -355,7 +390,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             // Check for compound assignment (+=, -=)
             char *next_char = peek(&cur, 0);
             if (next_char && *next_char == EQUAL_CHR) {
-                next(&cur);
+                next_rune(&cur);
                 t.tk = (ch == '+') ? T_PLUS_EQ : T_MIN_EQ;
                 da_append(tokens, t);
                 continue;
@@ -363,15 +398,16 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
 
             // Check for arrow (->)
             if (next_char && *next_char == '>') {
-                next(&cur);
+                next_rune(&cur);
                 t.tk = T_ARROW;
                 da_append(tokens, t);
                 continue;
             }
 
             // SCIENTIFIC NOTATION CHECK:
+            // @NOTE: only support ascii stuff here
             if (sb.count > 0 && (toupper(sb.items[sb.count-1]) == 'E')) {
-                sb_appendf(&sb, "%c", ch);
+                write_to_sb(&r, &sb, cur.cursor - r.width);
                 continue;
             }
 
@@ -385,7 +421,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             char *nc = peek(&cur, 0);
             if (nc && *nc == EQUAL_CHR) {
                 t.tk = T_STAR_EQ;
-                next(&cur);
+                next_rune(&cur);
             } else {
                 t.tk = T_STAR;
             }
@@ -397,7 +433,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             char *nc = peek(&cur, 0);
             if (nc && *nc == EQUAL_CHR) {
                 t.tk = T_DIV_EQ;
-                next(&cur);
+                next_rune(&cur);
             } else {
                 t.tk = T_DIV;
             }
@@ -409,7 +445,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             char *nc = peek(&cur, 0);
             if (nc && *nc == EQUAL_CHR) {
                 t.tk = T_MOD_EQ;
-                next(&cur);
+                next_rune(&cur);
             } else {
                 t.tk = T_MOD;
             }
@@ -423,10 +459,10 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             char *nc = peek(&cur, 0);
             if (nc && *nc == EQUAL_CHR) {
                 t.tk = T_EQ;
-                next(&cur);
+                next_rune(&cur);
             } else if (nc && *nc == '>') {
                 t.tk = T_FATARROW;
-                next(&cur);
+                next_rune(&cur);
             } else {
                 t.tk = T_EQUAL;
             }
@@ -457,7 +493,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             char *nc = peek(&cur, 0);
             if (nc && *nc == COLON_CHR) {
                 t.tk = T_DCOLON;
-                next(&cur);
+                next_rune(&cur);
             }
             da_append(tokens, t);
         } break;
@@ -468,15 +504,15 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
                 char *nc2 = peek(&cur, 1);
                 if (nc2 && *nc2 == EQUAL_CHR) {
                     t.tk = T_LSHIFT_EQ;
-                    next(&cur);
-                    next(&cur);
+                    next_rune(&cur);
+                    next_rune(&cur);
                 } else {
                     t.tk = T_LSHIFT;
-                    next(&cur);
+                    next_rune(&cur);
                 }
             } else if (nc && *nc == EQUAL_CHR) {
                 t.tk = T_LTE;
-                next(&cur);
+                next_rune(&cur);
             } else {
                 t.tk = T_LT;
             }
@@ -489,15 +525,15 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
                 char *nc2 = peek(&cur, 1);
                 if (nc2 && *nc2 == EQUAL_CHR) {
                     t.tk = T_RSHIFT_EQ;
-                    next(&cur);
-                    next(&cur);
+                    next_rune(&cur);
+                    next_rune(&cur);
                 } else {
                     t.tk = T_RSHIFT;
-                    next(&cur);
+                    next_rune(&cur);
                 }
             } else if (nc && *nc == EQUAL_CHR) {
                 t.tk = T_GTE;
-                next(&cur);
+                next_rune(&cur);
             } else {
                 t.tk = T_GT;
             }
@@ -507,7 +543,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             char *nc = peek(&cur, 0);
             if (nc && *nc == EQUAL_CHR) {
                 t.tk = T_NEQ;
-                next(&cur);
+                next_rune(&cur);
             } else {
                 t.tk = T_NOT;
             }
@@ -517,10 +553,10 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             char *nc = peek(&cur, 0);
             if (nc && *nc == AMPERSAND_CHR) {
                 t.tk = T_AND;
-                next(&cur);
+                next_rune(&cur);
             } else if (nc && *nc == EQUAL_CHR) {
                 t.tk = T_AND_EQ;
-                next(&cur);
+                next_rune(&cur);
             } else {
                 t.tk = T_BIT_AND;
             }
@@ -530,10 +566,10 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             char *nc = peek(&cur, 0);
             if (nc && *nc == PIPE_CHR) {
                 t.tk = T_OR;
-                next(&cur);
+                next_rune(&cur);
             } else if (nc && *nc == EQUAL_CHR) {
                 t.tk = T_OR_EQ;
-                next(&cur);
+                next_rune(&cur);
             } else {
                 t.tk = T_BIT_OR;
             }
@@ -543,7 +579,7 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
             char *nc = peek(&cur, 0);
             if (nc && *nc == EQUAL_CHR) {
                 t.tk = T_XOR_EQ;
-                next(&cur);
+                next_rune(&cur);
             } else {
                 t.tk = T_BIT_XOR;
             }
@@ -560,12 +596,12 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
                 if (nc2 && *nc2 == DOT_CHR) {
                     // ...
                     t.tk = T_DOTDOTDOT;
-                    next(&cur);
-                    next(&cur);
+                    next_rune(&cur);
+                    next_rune(&cur);
                 } else {
                     // ..
                     t.tk = T_DOTDOT;
-                    next(&cur);
+                    next_rune(&cur);
                 }
             } else {
                 t.tk = T_DOT;
@@ -587,12 +623,12 @@ bool parse_tokens_v2(Nob_String_Builder *data, Tokens *tokens, const char *name)
         default: { match = false; } break;
         }
 
-        if (isspace(ch) || match) {
+        if ((ch <= 127 && isspace(ch)) || match) {
             if (sb.count > 0) make_ident_or_n(tokens, &sb, currentloc);
             continue;
         }
 
-        sb_appendf(&sb, "%c", ch);
+        write_to_sb(&r, &sb, cur.cursor - r.width);
     }
 
     /* NOTE: exhaust the last token */

@@ -57,6 +57,11 @@
 #define AT_CHR '@'
 #define DOLLAR_CHR '$'
 
+typedef struct {
+    uint32_t codepoint;
+    size_t width; // bytes consumed
+} Rune;
+
 typedef enum {
     T_EOF = 0,
 
@@ -262,6 +267,7 @@ typedef struct {
     Nob_String_Builder *data;
 } InternalCursor;
 
+Rune utf8_next(const unsigned char *s);
 bool parse_tokens_v2(Nob_String_Builder *data, Tokens *t, const char *name);
 void tokens_deinit(Tokens *t);
 

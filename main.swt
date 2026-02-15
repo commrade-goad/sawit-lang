@@ -43,11 +43,12 @@
 // for (;;) return "a";
 
 // >> foreign
+// combine enum and struct since enum is just integer member of struct that is a const
 
 let b []u8 = "yes";
 
 enum Color = {
-     RED = 69;
+     RED = 0; 
      GREEN;
      BLUE;
 };
