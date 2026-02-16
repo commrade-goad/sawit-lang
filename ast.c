@@ -447,9 +447,9 @@ static Stmt *parse_for(Parser *p, Token *kw) {
 }
 
 static Stmt *parse_const(Parser *p, Token *btok) {
-    Token *current = peek(p);
+    Token *name = peek(p);
     if (!check(p, T_IDENT)) {
-        log_error(current->loc, "const statement expected token %s, but got %s", get_token_str(T_IDENT), get_token_str(current->tk));
+        log_error(name->loc, "const statement expected token %s, but got %s", get_token_str(T_IDENT), get_token_str(name->tk));
         return NULL;
     }
     advance(p);
@@ -461,7 +461,7 @@ static Stmt *parse_const(Parser *p, Token *btok) {
     }
     EXPECT_EXIT(p, T_EQUAL);
 
-    current = peek(p);
+    Token *current = peek(p);
     Expr *exp = parse_expression(p, 0);
     if (!exp) {
         log_error(current->loc, "const statement expected Expression got %s", get_token_str(current->tk));
@@ -469,7 +469,7 @@ static Stmt *parse_const(Parser *p, Token *btok) {
     }
     Stmt *const_stmt = make_stmt(STMT_CONST, p->arena);
     const_stmt->loc = btok->loc;
-    const_stmt->as.const_stmt.name = current->data.String;
+    const_stmt->as.const_stmt.name = name->data.String;
     const_stmt->as.const_stmt.value = exp;
     const_stmt->as.const_stmt.type = consttype ? consttype : NULL;
 
