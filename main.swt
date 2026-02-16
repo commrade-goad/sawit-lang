@@ -59,10 +59,8 @@ struct Point = {
        something [8]u32;
 };
 
-struct Point = {};
-
 const IAM_A_CONST = b;
-const IAM_A_CONST [5]u8 = b;
+// const IAM_A_CONST [5]u8 = b;
 
 let a = fn () -> Color { return 10 + 2; }();
 

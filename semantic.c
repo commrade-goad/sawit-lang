@@ -8,7 +8,6 @@ bool semantic_check_pass_one(Semantic *s,  Statements *st) {
 
         // @NOTE: there is nof func stuff here because everything is registered as var with a function def inside it.
         switch (current->type) {
-        // @TODO: Enum
         case STMT_ENUM_DEF: {
             Symbol sym = {0};
             sym.loc = current->loc;
@@ -78,6 +77,11 @@ bool semantic_check_pass_one(Semantic *s,  Statements *st) {
         default: {} break;
         }
     }
+    return true;
+}
+bool semantic_check_pass_two(Semantic *s,  Statements *st) {
+    (void)s;
+    (void)st;
     return true;
 }
 

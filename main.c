@@ -83,7 +83,9 @@ int main(int argc, char **argv) {
     semantic.arena = &rarena;
 
     start = current_time_ns();
-    semantic_check_pass_one(&semantic, &program);
+    if (!semantic_check_pass_one(&semantic, &program)) goto cleanup;
+    if (!semantic_check_pass_two(&semantic, &program)) goto cleanup;
+
     end = current_time_ns();
     elapsed_ms = (double)(end - start) / 1e6;
     printf("Semantic Checking : %.3f ms\n", elapsed_ms);

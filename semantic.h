@@ -42,6 +42,7 @@ typedef struct {
 } Semantic;
 
 bool semantic_check_pass_one(Semantic *s, Statements *st);
+bool semantic_check_pass_two(Semantic *s,  Statements *st);
 
 void enter_scope(Semantic *s);
 void leave_scope(Semantic *s);
