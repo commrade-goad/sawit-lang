@@ -12,15 +12,16 @@ typedef struct Type Type;
 
 typedef enum {
     SYM_VAR,
-    SYM_FUNC,
+    SYM_CONST,
     SYM_TYPE,
 } Symbol_Kind;
 
 typedef struct {
     char *name;
     Symbol_Kind kind;
-    bool is_const;
+    bool is_extern;      // @NOTE: only used on func
     Type *declared_type;
+    SrcLoc loc;
 } Symbol;
 
 typedef struct {
