@@ -75,5 +75,13 @@ y = 20;
 
 add(10, 20);
 
+{
+    let doing_something = 10;
+    defer add(10,20);
+    defer {
+         cleanup(); 
+    }
+}
+
 // let stuff =
 // "hello";

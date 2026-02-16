@@ -158,6 +158,7 @@ static Stmt *parse_for(Parser *p, Token *kw);
 static Stmt *parse_enum(Parser *p, Token *name_tok);
 static Stmt *parse_const(Parser *p, Token *name_tok);
 static Stmt *parse_struct(Parser *p, Token *name_tok);
+static Stmt *parse_defer(Parser *p, Token *name_tok);
 
 static Expr *parse_expression(Parser *p, int min_bp) {
     Expr *lhs;
@@ -285,7 +286,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
 
         // ---------- FUNCTION CALL ----------
         if (next->tk == T_OPARENT) {
-            Token *before = next;
+            Token *before = previous(p);
             advance(p); // consume '('
 
             Args args = {0};
@@ -530,6 +531,19 @@ static Stmt *parse_enum(Parser *p, Token *btok) {
     return stmt;
 }
 
+static Stmt *parse_defer(Parser *p, Token *name_tok) {
+    Stmt *stmt = parse_statement(p);
+    if (!stmt) return NULL;
+    if (stmt->type == STMT_DEFER) {
+        log_error(name_tok->loc, "Defering and defer statement is not allowed!");
+        return NULL;
+    }
+    Stmt * ret = make_stmt(STMT_DEFER, p->arena);
+    ret->loc = name_tok->loc;
+    ret->as.defer.callback = stmt;
+    return ret;
+}
+
 // @TODO: add support for generics later on!
 static Stmt *parse_struct(Parser *p, Token *kw) {
     Token *nametk = peek(p);
@@ -690,6 +704,11 @@ static Stmt *parse_statement(Parser *p) {
     if (match(p, T_TYPE)) {
         Token *kw = previous(p);
         return parse_struct(p, kw);
+    }
+
+    if (match(p, T_DEFER)) {
+        Token *kw = previous(p);
+        return parse_defer(p, kw);
     }
 
     Expr *expr = parse_expression(p, 0);
@@ -907,6 +926,10 @@ void print_stmt(Stmt *s, int indent) {
     print_indent(indent);
 
     switch (s->type) {
+    case STMT_DEFER:
+        printf("DEFER\n");
+        print_stmt(s->as.defer.callback, indent + 1);
+        break;
     case STMT_IF:
         printf("IF\n");
         print_expr(s->as.if_stmt.condition, indent + 1);

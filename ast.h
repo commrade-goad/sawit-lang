@@ -28,6 +28,7 @@ typedef enum {
     STMT_IF,       // if (a) {} else {}
     STMT_FOR,      // for (init; cond; inc) body
     STMT_BLOCK,    // { stmt1; stmt2; }
+    STMT_DEFER,
     STMT_ENUM_DEF,
     STMT_STRUCT_DEF,
 } StmtType;
@@ -142,6 +143,10 @@ struct Stmt {
             // @TODO: in the future refactor this to a proper flag not just bool like this!
             bool extern_symbol;
         } let;
+
+        struct {
+            Stmt *callback;
+        } defer;
 
         struct {
             char *name;
