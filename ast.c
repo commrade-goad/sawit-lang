@@ -797,13 +797,13 @@ static Type *parse_type(Parser *p) {
         Type *inner = parse_type(p);
         if (!inner) return NULL;
         if (inner->kind == TYPE_VARIADIC || inner->kind == TYPE_VARIADIC) {
-            log_error(peek(p), "Variadic type didnt support another variadic as its type.");
+            log_error(peek(p)->loc, "Variadic type didnt support another variadic as its type.");
             return NULL;
         }
         Type *t = make_type(p->arena, TYPE_VARIADIC);
         if (!t) {
             fprintf(stderr, "ERROR: I dont think this is possible but please buy more ram.");
-            return NULL:
+            return NULL;
         }
         t->loc = tok->loc;
         t->as.variadic.var_type = inner;

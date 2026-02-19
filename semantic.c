@@ -1,7 +1,5 @@
 #include "semantic.h"
 
-// @TODO: variadic check on function definition on pass_two
-
 // Forward declarations for the recursive walkers
 static bool check_stmt(Semantic *s, Stmt *st);
 static bool check_expr(Semantic *s, Expr *e);
@@ -158,6 +156,14 @@ static bool check_type(Semantic *s, Type *t) {
         bool ok = check_type(s, t->as.function.ret);
         for (size_t i = 0; i < t->as.function.params.count; i++) {
             if (!check_type(s, t->as.function.params.items[i].type)) ok = false;
+            // @NOTE: Variadic only allowed on the last parameter
+            if (i + 1 < t->as.function.params.count &&
+                (t->as.function.params.items[i].type->kind == TYPE_CVARIADIC ||
+                 t->as.function.params.items[i].type->kind == TYPE_VARIADIC))
+            {
+                log_error(t->loc, "Variadic or C Type Variadic is only allowed at the end of the parameters");
+                ok = false;
+            }
         }
         return ok;
     }
