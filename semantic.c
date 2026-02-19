@@ -1,5 +1,7 @@
 #include "semantic.h"
 
+// @TODO: variadic check on function definition on pass_two
+
 // Forward declarations for the recursive walkers
 static bool check_stmt(Semantic *s, Stmt *st);
 static bool check_expr(Semantic *s, Expr *e);
@@ -353,6 +355,7 @@ static bool check_stmt(Semantic *s, Stmt *st) {
     // Enum/struct definitions are pure type declarations – their bodies don't
     // contain expressions that need resolving yet.  If you later add default
     // member values to structs, walk them here.
+    // now Struct and Enum already a type just do it later @TODO
     case STMT_ENUM_DEF: {} break;
     case STMT_STRUCT_DEF: {} break;
     }
