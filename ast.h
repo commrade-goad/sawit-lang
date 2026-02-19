@@ -63,7 +63,7 @@ typedef struct {
 
 typedef struct {
     char *name;
-    int64_t value; // explicit value or auto-assigned
+    Expr *value;
 } EnumVariant;
 
 typedef struct {
@@ -95,6 +95,9 @@ typedef enum {
     TYPE_POINTER,   // *T
     TYPE_ARRAY,     // T[]
     TYPE_FUNCTION,  // fn(T1, T2) -> T3
+    TYPE_ENUM,
+    TYPE_STRUCT,
+    TYPE_VARIADIC,
 } TypeKind;
 
 struct Type {
@@ -123,6 +126,18 @@ struct Type {
             Type *ret;
             Params params;
         } function;
+
+        struct {
+            EnumVariants *variants;
+        } enum_type;
+
+        struct {
+            Structure *members;
+        } struct_type;
+
+        struct {
+            Type *var_type;
+        } variadic;
     } as;
 };
 
@@ -241,6 +256,7 @@ struct Expr {
 
 Expr *make_expr(ExprType type, Arena *a);
 Stmt *make_stmt(StmtType type, Arena *a);
+Type *make_type(Arena *a, TypeKind kind);
 bool make_ast(Arena *a, Statements *stmts, Tokens *t);
 void print_stmt(Stmt *s, int indent);
 

@@ -35,7 +35,7 @@ const IAM_A_CONST = b;
 // const IAM_A_CONST [5]u8 = b;
 
 // @NOTE: to mark a function extern to use using other C library
-let printf = extern fn (fmt *char, ...) -> s32 {};
+let printf = extern fn (fmt *char, args ...*char) -> s32 {};
 
 stuff[20] = a;
 

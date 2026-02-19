@@ -145,7 +145,6 @@ static int infix_binding_power(TokenKind tk, int *left_bp, int *right_bp) {
 }
 
 // THIS IS DUMB
-static Type *make_type(Parser *p, TypeKind kind);
 static Type *parse_type(Parser *p);
 static void print_type(Type *t, int indent);
 
@@ -462,12 +461,8 @@ static Stmt *parse_const(Parser *p, Token *btok) {
     }
     EXPECT_EXIT(p, T_EQUAL);
 
-    Token *current = peek(p);
     Expr *exp = parse_expression(p, 0);
-    if (!exp) {
-        log_error(current->loc, "const statement expected Expression got %s", get_token_str(current->tk));
-        return NULL;
-    }
+    if (!exp) return NULL;
     Stmt *const_stmt = make_stmt(STMT_CONST, p->arena);
     const_stmt->loc = btok->loc;
     const_stmt->as.const_stmt.name = name->data.String;
@@ -489,7 +484,6 @@ static Stmt *parse_enum(Parser *p, Token *btok) {
 
     EXPECT_EXIT(p, T_EQUAL);
     EXPECT_EXIT(p, T_OCPARENT);
-    int64_t current_value = 0;
     Stmt * stmt = make_stmt(STMT_ENUM_DEF, p->arena);
     size_t region_size = sizeof(char) * strlen(nametk->data.String);
     char *region = arena_alloc(p->arena, region_size + 1);
@@ -502,22 +496,25 @@ static Stmt *parse_enum(Parser *p, Token *btok) {
         Token *variant_tok = peek(p);
         EXPECT_EXIT(p, T_IDENT);
 
-        EnumVariant variant = {
-            .name = variant_tok->data.String,
-            .value = current_value++
-        };
+        EnumVariant variant = {0};
+        variant.name = variant_tok->data.String;
 
         if (check(p, T_EQUAL)) {
             advance(p);
             Token *current = peek(p);
-            if (current && current->tk == T_NUM) {
-                current_value = current->data.Uint64;
-                variant.value = current_value++;
-                advance(p);
-            } else {
-                log_error(current->loc, "Expected an integer for the value but got %s", get_token_str(current->tk));
+            Expr *value = parse_expression(p, 0);
+            if (!value) return NULL;
+            if (value->type == EXPR_ASSIGN ||
+                value->type == EXPR_FUNCTION ||
+                value->type == EXPR_CALL)
+            {
+                // @TODO: make the error more prettier so stringify the value->kind
+                log_error(current->loc, "Enum value didnt support assignment, function definition, and function call expression type.");
                 return NULL;
             }
+            variant.value = value;
+        } else {
+            variant.value = NULL;
         }
         da_append(&stmt->as.enum_def.variants, variant);
 
@@ -808,7 +805,7 @@ static Type *parse_type(Parser *p) {
         Type *element = parse_type(p);
         if (!element) return NULL;
 
-        Type *t = make_type(p, TYPE_ARRAY);
+        Type *t = make_type(p->arena, TYPE_ARRAY);
         t->loc = tok->loc;
         t->as.array.element = element;
         t->as.array.size = count;
@@ -822,7 +819,7 @@ static Type *parse_type(Parser *p) {
         Type *base = parse_type(p);
         if (!base) return NULL;
 
-        Type *t = make_type(p, TYPE_POINTER);
+        Type *t = make_type(p->arena, TYPE_POINTER);
         t->loc = tok->loc;
         t->as.pointer.base = base;
         return t;
@@ -838,7 +835,7 @@ static Type *parse_type(Parser *p) {
 
             EXPECT_EXIT(p, T_OPARENT); // (
 
-            Type *t = make_type(p, TYPE_FUNCTION);
+            Type *t = make_type(p->arena, TYPE_FUNCTION);
             t->loc = tok->loc;
 
             // Parse Parameter types
@@ -875,7 +872,7 @@ static Type *parse_type(Parser *p) {
         // ---------- NORMAL NAMED TYPE ----------
         advance(p);
 
-        Type *t = make_type(p, TYPE_NAME);
+        Type *t = make_type(p->arena, TYPE_NAME);
         t->loc = tok->loc;
         t->as.named.name = tok->data.String;
         return t;
@@ -885,9 +882,10 @@ static Type *parse_type(Parser *p) {
     return NULL;
 }
 
-static Type *make_type(Parser *p, TypeKind kind) {
-    Type *k = (Type *)arena_alloc(p->arena, sizeof(Type));
-    k->kind = kind;
+Type *make_type(Arena *a, TypeKind kind) {
+    Type *k = (Type *)arena_alloc(a, sizeof(Type));
+    if (k) k->kind = kind;
+    else k = NULL;
     return k;
 }
 
@@ -897,6 +895,13 @@ static void print_type(Type *t, int indent) {
     print_indent(indent);
 
     switch (t->kind) {
+    // @TODO: Not yet implemented
+    case TYPE_ENUM: break;
+    case TYPE_STRUCT: break;
+    case TYPE_VARIADIC:
+        printf("VARIADIC\n");
+        print_type(t->as.variadic.var_type, indent + 1);
+        break;
     case TYPE_NAME:
         printf("TYPE(%s)\n", t->as.named.name);
         break;
@@ -970,9 +975,8 @@ void print_stmt(Stmt *s, int indent) {
         printf("ENUM %s\n", s->as.enum_def.name);
         for (size_t i = 0; i < s->as.enum_def.variants.count; i++) {
             print_indent(indent + 1);
-            printf("VARIANT(%s = %ld)\n",
-                   s->as.enum_def.variants.items[i].name,
-                   s->as.enum_def.variants.items[i].value);
+            printf("VARIANT(%s)\n", s->as.enum_def.variants.items[i].name);
+            if (s->as.enum_def.variants.items[i].value) print_expr(s->as.enum_def.variants.items[i].value, indent + 2);
         }
         break;
 

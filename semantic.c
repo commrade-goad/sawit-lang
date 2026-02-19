@@ -19,8 +19,11 @@ bool semantic_check_pass_one(Semantic *s,  Statements *st) {
             sym.loc = current->loc;
             sym.name = current->as.enum_def.name;
             sym.kind = SYM_TYPE;
-            sym.declared_type = NULL; // @TODO: idk i dont have any struct type so i just give it NULL and if you need the
-                                      // type just get the name, but in the future maybe we need new type called type.
+
+            // We need to construc the enum type
+            Type *newtype = make_type(s->arena, TYPE_ENUM);
+            newtype->as.enum_type.variants = &current->as.enum_def.variants;
+            sym.declared_type = newtype;
             sym.is_extern = false; // @NOTE: maybe will support extern in the future
 
             if (!define_symbol(s, sym)) {
@@ -36,8 +39,11 @@ bool semantic_check_pass_one(Semantic *s,  Statements *st) {
             sym.loc = current->loc;
             sym.name = current->as.struct_def.name;
             sym.kind = SYM_TYPE;
-            sym.declared_type = NULL; // @TODO: idk i dont have any struct type so i just give it NULL and if you need the
-                                      // type just get the name, but in the future maybe we need new type called type.
+
+            // We need to construc the enum type
+            Type *newtype = make_type(s->arena, TYPE_STRUCT);
+            newtype->as.struct_type.members = &current->as.struct_def.members;
+            sym.declared_type = newtype;
             sym.is_extern = false; // @NOTE: maybe will support extern in the future
 
             if (!define_symbol(s, sym)) {
@@ -97,8 +103,9 @@ bool semantic_check_pass_two(Semantic *s, Statements *st) {
 }
 
 bool semantic_check_pass_three(Semantic *s, Statements *st) {
-    // @TODO: not implemented
-    return false;
+    // @TODO: not yet implemented!
+    bool ok = true;
+    return ok;
 }
 
 // ---------------------------------------------------------------------------
@@ -113,6 +120,8 @@ static bool check_type(Semantic *s, Type *t) {
     if (!t) return true;
 
     switch (t->kind) {
+    case TYPE_ENUM:
+    case TYPE_STRUCT:
     case TYPE_NAME: {
         Symbol *sym = lookup_symbol(s, t->as.named.name);
         if (!sym) {
@@ -338,9 +347,8 @@ static bool check_stmt(Semantic *s, Stmt *st) {
     // Enum/struct definitions are pure type declarations – their bodies don't
     // contain expressions that need resolving yet.  If you later add default
     // member values to structs, walk them here.
-    case STMT_ENUM_DEF:
-    case STMT_STRUCT_DEF:
-        break;
+    case STMT_ENUM_DEF: {} break;
+    case STMT_STRUCT_DEF: {} break;
     }
 
     return ok;
