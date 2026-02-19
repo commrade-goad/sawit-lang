@@ -98,6 +98,7 @@ typedef enum {
     TYPE_ENUM,
     TYPE_STRUCT,
     TYPE_VARIADIC,
+    TYPE_CVARIADIC,
 } TypeKind;
 
 struct Type {

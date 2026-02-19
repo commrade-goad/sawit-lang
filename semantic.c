@@ -120,6 +120,12 @@ static bool check_type(Semantic *s, Type *t) {
     if (!t) return true;
 
     switch (t->kind) {
+    case TYPE_CVARIADIC: {
+        // No checking needed for C style variadic we can only hope and pray
+    } break;
+    case TYPE_VARIADIC: {
+        // @TODO: not implemented yet.
+    } break;
     case TYPE_ENUM:
     case TYPE_STRUCT:
     case TYPE_NAME: {

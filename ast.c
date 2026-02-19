@@ -222,7 +222,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
                 Param param = {0};
                 if (name->tk == T_DOTDOTDOT) {
                     param.name = "_";
-                    param.type = make_type(p, TYPE_NAME);
+                    param.type = make_type(p->arena, TYPE_CVARIADIC);
                     param.type->loc = name->loc;
                     param.type->as.named.name = "VARIADIC";
                     param.loc = peek(p)->loc;
@@ -902,6 +902,9 @@ static void print_type(Type *t, int indent) {
         printf("VARIADIC\n");
         print_type(t->as.variadic.var_type, indent + 1);
         break;
+    case TYPE_CVARIADIC: {
+        printf("C STYLE VARIADIC\n");
+    } break;
     case TYPE_NAME:
         printf("TYPE(%s)\n", t->as.named.name);
         break;
