@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
     String_Builder sb = {0};
 
     if (!read_entire_file(file, &sb))
-        perr_exit("Failed to read the file `%s`", file);
+        return 1;
     if (sb.count <= 1) perr_exit("Empty file");
     sb_append_null(&sb);
 
@@ -48,6 +48,9 @@ int main(int argc, char **argv) {
     if (arena_init(&rarena, ARENA_DEFAULT_SIZE) != 0) {
         perr_exit("Failed to allocate the runtime stack arena `%s`", strerror(errno));
     }
+
+    printf("Processing file `%s'...\n", file);
+    double total_time = 0.0;
 
     // == TOKENIZING
     Tokens tokens = {0};
@@ -61,7 +64,8 @@ int main(int argc, char **argv) {
     }
 
     double elapsed_ms = (double)(end - start) / 1e6;
-    printf("Token parsing     : %.3f ms\n", elapsed_ms);
+    total_time += elapsed_ms;
+    printf("Token parsing took     : %.3f ms\n", elapsed_ms);
 
     /* print_token(&tokens); */
 
@@ -72,11 +76,12 @@ int main(int argc, char **argv) {
     if (!make_ast(&rarena, &program, &tokens)) { goto cleanup; }
     end = current_time_ns();
     elapsed_ms = (double)(end - start) / 1e6;
-    printf("AST parsing       : %.3f ms\n", elapsed_ms);
+    total_time += elapsed_ms;
+    printf("AST parsing took       : %.3f ms\n", elapsed_ms);
 
-    for (size_t i = 0; i < program.count; i++) {
-        print_stmt(program.items[i], 0);
-    }
+    /* for (size_t i = 0; i < program.count; i++) { */
+    /*     print_stmt(program.items[i], 0); */
+    /* } */
 
     // == SEMANTIC CHECKING
     Semantic semantic = {0};
@@ -88,8 +93,10 @@ int main(int argc, char **argv) {
 
     end = current_time_ns();
     elapsed_ms = (double)(end - start) / 1e6;
-    printf("Semantic Checking : %.3f ms\n", elapsed_ms);
+    total_time += elapsed_ms;
+    printf("Semantic Checking took : %.3f ms\n", elapsed_ms);
 
+    printf("Total time             : %.3f ms\n", total_time);
     goto cleanup;
 
  cleanup:

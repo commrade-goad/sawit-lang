@@ -8,16 +8,16 @@
 #include "utils.h"
 
 typedef enum {
-    AST_LITERAL_INT,
-    AST_LITERAL_FLOAT,
-    AST_LITERAL_STRING,
-    AST_IDENTIFIER,
-    AST_UNARY_OP,      // something like -5 +2 !a ~a
-    AST_BINARY_OP,     // lhs [SOMETHING] rhs
-    AST_ASSIGN,
-    AST_FUNCTION,
-    AST_CALL,
-    AST_INDEX,
+    EXPR_LITERAL_INT,
+    EXPR_LITERAL_FLOAT,
+    EXPR_LITERAL_STRING,
+    EXPR_IDENTIFIER,
+    EXPR_UNARY_OP,      // something like -5 +2 !a ~a
+    EXPR_BINARY_OP,     // lhs [SOMETHING] rhs
+    EXPR_ASSIGN,
+    EXPR_FUNCTION,
+    EXPR_CALL,
+    EXPR_INDEX,
 } ExprType;
 
 typedef enum {
@@ -46,6 +46,7 @@ typedef struct {
 typedef struct {
     char *name;
     Type *type;
+    SrcLoc loc;
 } Param;
 
 typedef struct {
@@ -243,4 +244,4 @@ Stmt *make_stmt(StmtType type, Arena *a);
 bool make_ast(Arena *a, Statements *stmts, Tokens *t);
 void print_stmt(Stmt *s, int indent);
 
-#endif // EXPR_H
+#endif // AST_H

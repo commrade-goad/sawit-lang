@@ -1,71 +1,41 @@
-// for the future block will be expr
-// so `let a = { a + 20 };` is possible but not for now.
-// let a = 10;
-// {
-//     let b = 5;
-//     a = a + b;
-// }
+let a = 10;
+{
+    let b = 5;
+    a = a + b;
+}
 
-// let foo = (a any) -> void {
-//     return;
-// };
+let add = fn (a s32, b s32) -> s32 {
+    return a + b;
+};
 
-// let add = fn (a s32, b s32) -> s32 {
-//     return a + b;
-// };
+struct Point = {
+    x f32;
+    y f32;
+};
 
-// let min = 10;
-// {
-//     let min = fn () -> void { };
-// }
-// let second u32 = 200000;
-// min = second;
+let metux = false;
+if (metux == false) {
+    let sixth = 10;
+} else let sixth = 6;
 
-// let third = fn () -> void {};
-// let fourth = fn (a s32) -> s32 { return 10; };
+enum Color = {
+    RED = 69;
+    GREEN;
+    BLUE;
+};
 
-// Point :: type {
-//     x f32;
-//     y f32;
-// };
-
-// let metux = false;
-// if (metux == false) {
-//     let sixth = 10;
-// } else let sixth = 6;
-
-// Color :: enum {
-//     RED;
-//     GREEN;
-//     BLUE;
-// };
-
-// for (;;) return "a";
+for (;;) return "a";
 
 // >> foreign
 // combine enum and struct since enum is just integer member of struct that is a const
 
 // let b []u8 = "yes";
 
-enum Color = {
-     RED = 0; 
-     GREEN;
-     BLUE;
-};
-
-struct Point = {
-       x f32 = 0;
-       y f32;
-       something [8]u32;
-};
-
 const IAM_A_CONST = b;
 // const IAM_A_CONST [5]u8 = b;
 
-let a = fn () -> Color { return 10 + 2; }();
-
 // @NOTE: to mark a function extern to use using other C library
-let printf = @extern fn (fmt *char, ...) -> s32 {};
+let printf = extern fn (fmt *char, ...) -> s32 {};
 
 stuff[20] = a;
 
@@ -82,6 +52,3 @@ add(10, 20);
          cleanup(); 
     }
 }
-
-// let stuff =
-// "hello";

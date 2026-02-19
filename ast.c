@@ -169,35 +169,35 @@ static Expr *parse_expression(Parser *p, int min_bp) {
     switch (tok->tk) {
 
     case T_NUM: {
-        lhs = make_expr(AST_LITERAL_INT, p->arena);
+        lhs = make_expr(EXPR_LITERAL_INT, p->arena);
         lhs->loc = tok->loc;
         lhs->as.uint_val = tok->data.Uint64;
     } break;
 
     case T_FLO: {
-        lhs = make_expr(AST_LITERAL_FLOAT, p->arena);
+        lhs = make_expr(EXPR_LITERAL_FLOAT, p->arena);
         lhs->loc = tok->loc;
         lhs->as.float_val = tok->data.F64;
     } break;
 
     case T_STR: {
-        lhs = make_expr(AST_LITERAL_STRING, p->arena);
+        lhs = make_expr(EXPR_LITERAL_STRING, p->arena);
         lhs->loc = tok->loc;
         lhs->as.identifier = tok->data.String;
     } break;
 
     case T_IDENT: {
-        lhs = make_expr(AST_IDENTIFIER, p->arena);
+        lhs = make_expr(EXPR_IDENTIFIER, p->arena);
         lhs->loc = tok->loc;
         lhs->as.identifier = tok->data.String;
     } break;
     case T_FALSE: {
-        lhs = make_expr(AST_LITERAL_INT, p->arena);
+        lhs = make_expr(EXPR_LITERAL_INT, p->arena);
         lhs->loc = tok->loc;
         lhs->as.uint_val = 0;
     } break;
     case T_TRUE: {
-        lhs = make_expr(AST_LITERAL_INT, p->arena);
+        lhs = make_expr(EXPR_LITERAL_INT, p->arena);
         lhs->loc = tok->loc;
         lhs->as.uint_val = 1;
     } break;
@@ -226,6 +226,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
                     param.type = make_type(p, TYPE_NAME);
                     param.type->loc = name->loc;
                     param.type->as.named.name = "VARIADIC";
+                    param.loc = peek(p)->loc;
                 } else {
                     param.name = name->data.String;
                     param.type = param_type;
@@ -243,7 +244,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
             Token *kw = previous(p);
             Stmt *body = parse_block(p, kw);
 
-            lhs = make_expr(AST_FUNCTION, p->arena);
+            lhs = make_expr(EXPR_FUNCTION, p->arena);
             lhs->as.function.ret = ret_type;
             lhs->as.function.body = body;
             lhs->as.function.params = params;
@@ -267,7 +268,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
         Expr *rhs = parse_expression(p, BIGGEST_POWER);
         if (!rhs) return NULL;
 
-        lhs = make_expr(AST_UNARY_OP, p->arena);
+        lhs = make_expr(EXPR_UNARY_OP, p->arena);
         lhs->loc = tok->loc;
         lhs->as.unary.op = tok->tk;
         lhs->as.unary.right = rhs;
@@ -301,7 +302,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
 
             EXPECT_EXIT(p, T_CPARENT);
 
-            Expr *call = make_expr(AST_CALL, p->arena);
+            Expr *call = make_expr(EXPR_CALL, p->arena);
             call->as.call.callee = lhs;
             call->as.call.args = args;
             call->loc = before->loc;
@@ -320,7 +321,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
 
             EXPECT_EXIT(p, T_CSPARENT);
 
-            Expr *idx = make_expr(AST_INDEX, p->arena);
+            Expr *idx = make_expr(EXPR_INDEX, p->arena);
             idx->as.index.object = lhs;
             idx->as.index.index = index_expr;
             idx->loc = before->loc;
@@ -344,12 +345,12 @@ static Expr *parse_expression(Parser *p, int min_bp) {
         if (!rhs) return NULL;
 
         if (op == T_EQUAL) {
-            if (lhs->type != AST_IDENTIFIER && lhs->type != AST_INDEX) {
+            if (lhs->type != EXPR_IDENTIFIER && lhs->type != EXPR_INDEX) {
                 log_error(lhs->loc, "Invalid assignment target.");
                 return NULL;
             }
 
-            Expr *assign = make_expr(AST_ASSIGN, p->arena);
+            Expr *assign = make_expr(EXPR_ASSIGN, p->arena);
             assign->as.assign.target = lhs;
             assign->as.assign.value = rhs;
             assign->loc = next->loc;
@@ -358,7 +359,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
             continue;
         }
 
-        Expr *bin = make_expr(AST_BINARY_OP, p->arena);
+        Expr *bin = make_expr(EXPR_BINARY_OP, p->arena);
         bin->as.binary.op = op;
         bin->as.binary.left = lhs;
         bin->as.binary.right = rhs;
@@ -625,8 +626,7 @@ static Stmt *parse_let(Parser *p, Token *kw) {
 
     // Check if there is a annotation
     bool extern_sym = false;
-    if (check(p, T_AT)) {
-        advance(p);
+    if (check(p, T_EXTERN)) {
         EXPECT_EXIT(p, T_EXTERN);
         extern_sym = true;
     }
@@ -731,40 +731,40 @@ void print_expr(Expr *e, int indent) {
     print_indent(indent);
 
     switch (e->type) {
-    case AST_LITERAL_INT:
+    case EXPR_LITERAL_INT:
         printf("INT(%lu)\n", e->as.uint_val);
         break;
 
-    case AST_LITERAL_FLOAT:
+    case EXPR_LITERAL_FLOAT:
         printf("FLOAT(%f)\n", e->as.float_val);
         break;
 
-    case AST_LITERAL_STRING:
+    case EXPR_LITERAL_STRING:
         printf("STRING(%s)\n", e->as.identifier);
         break;
 
-    case AST_IDENTIFIER:
+    case EXPR_IDENTIFIER:
         printf("IDENT(%s)\n", e->as.identifier);
         break;
 
-    case AST_UNARY_OP:
+    case EXPR_UNARY_OP:
         printf("UNARY(op=%s)\n", get_token_str(e->as.unary.op));
         print_expr(e->as.unary.right, indent + 1);
         break;
 
-    case AST_BINARY_OP:
+    case EXPR_BINARY_OP:
         printf("BINARY(op=%s)\n", get_token_str(e->as.binary.op));
         print_expr(e->as.binary.left, indent + 1);
         print_expr(e->as.binary.right, indent + 1);
         break;
 
-    case AST_ASSIGN:
+    case EXPR_ASSIGN:
         printf("ASSIGN\n");
         print_expr(e->as.assign.target, indent + 1);
         print_expr(e->as.assign.value, indent + 1);
         break;
 
-    case AST_FUNCTION:
+    case EXPR_FUNCTION:
         printf("FUNCTION\n");
 
         if (e->as.function.ret) { print_type(e->as.function.ret, indent + 1); }
@@ -777,14 +777,14 @@ void print_expr(Expr *e, int indent) {
         print_stmt(e->as.function.body, indent + 1);
         break;
 
-    case AST_CALL:
+    case EXPR_CALL:
         printf("CALL\n");
         print_expr(e->as.call.callee, indent + 1);
         for (size_t i = 0; i < e->as.call.args.count; i++) {
             print_expr(e->as.call.args.items[i], indent + 1);
         }
         break;
-    case AST_INDEX:
+    case EXPR_INDEX:
         printf("INDEXING\n");
         print_expr(e->as.index.object, indent + 1);
         print_expr(e->as.index.index, indent + 1);
@@ -841,11 +841,12 @@ static Type *parse_type(Parser *p) {
             Type *t = make_type(p, TYPE_FUNCTION);
             t->loc = tok->loc;
 
-            // Parse Varameter types
+            // Parse Parameter types
             while (!check(p, T_CPARENT)) {
                 Param param = {
                     .name = "",
                     .type = parse_type(p),
+                    .loc = peek(p)->loc,
                 };
                 if (!param.type) return NULL;
 

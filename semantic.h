@@ -10,6 +10,13 @@
 
 typedef struct Type Type;
 
+#define KNOWN_DEFAULT_TYPE_LEN 12
+static const char *KNOWN_DEFAULT_TYPE[] = {
+    "s8", "s16", "s32", "s64",
+    "u8", "u16", "u32", "u64",
+    "bool", "char", "null", "VARIADIC"
+};
+
 typedef enum {
     SYM_VAR,
     SYM_CONST,
@@ -37,21 +44,18 @@ typedef struct Scope {
 
 typedef struct {
     Arena *arena;
+    Scope *root_scope;
     Scope *current_scope;
     Errors errors;
 } Semantic;
 
 bool semantic_check_pass_one(Semantic *s, Statements *st);
 bool semantic_check_pass_two(Semantic *s,  Statements *st);
+bool semantic_check_pass_three(Semantic *s, Statements *st);
 
 void enter_scope(Semantic *s);
 void leave_scope(Semantic *s);
 bool define_symbol(Semantic *s, Symbol symbol);
 Symbol *lookup_symbol(Semantic *s, const char *name);
-
-/*
-bool check_symbol(Semantic *s, Symbol *sym);
-bool check_type(Semantic *s, Type *type);
-*/
 
 #endif /* SEMANTIC_H */
