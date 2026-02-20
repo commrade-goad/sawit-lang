@@ -37,6 +37,7 @@ const IAM_A_CONST = b;
 // @NOTE: to mark a function extern to use using other C library
 // ... only allowed on extern
 let printf = extern fn (fmt *char, ...) -> s32 {};
+let second_printf = fn (fmt *char, arg ..s32) -> s32 {};
 
 stuff[20] = a;
 

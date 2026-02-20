@@ -201,6 +201,9 @@ static Expr *parse_expression(Parser *p, int min_bp) {
         lhs->as.uint_val = 1;
     } break;
 
+    // @TODO: Finish this assignment to struct (partial)
+    case T_OCPARENT: {} break;
+
     case T_FN: {
         Token *before = peek(p);
         Params params = {0};

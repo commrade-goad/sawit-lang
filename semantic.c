@@ -124,7 +124,7 @@ static bool check_type(Semantic *s, Type *t) {
         // No checking needed for C style variadic we can only hope and pray
     } break;
     case TYPE_VARIADIC: {
-        // @TODO: not implemented yet.
+        return check_type(s, t->as.variadic.var_type);
     } break;
     case TYPE_ENUM:
     case TYPE_STRUCT:

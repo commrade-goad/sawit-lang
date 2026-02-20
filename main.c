@@ -79,9 +79,9 @@ int main(int argc, char **argv) {
     total_time += elapsed_ms;
     printf("AST parsing took       : %.3f ms\n", elapsed_ms);
 
-    for (size_t i = 0; i < program.count; i++) {
-        print_stmt(program.items[i], 0);
-    }
+    /* for (size_t i = 0; i < program.count; i++) { */
+    /*     print_stmt(program.items[i], 0); */
+    /* } */
 
     // == SEMANTIC CHECKING
     Semantic semantic = {0};
@@ -103,5 +103,5 @@ int main(int argc, char **argv) {
     arena_deinit(&rarena);
     tokens_deinit(&tokens);
     da_free(tokens);
-    return 0;
+   return 0;
 }
