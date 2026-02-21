@@ -1,6 +1,6 @@
 #include "semantic.h"
 
-// TODO: Dereference, addres, sizeof
+// TODO: Dereference, addres, sizeof, function args check, assignement with {}
 
 // Forward declarations for the recursive walkers
 static bool check_stmt(Semantic *s, Stmt *st);
@@ -28,13 +28,15 @@ bool semantic_check_pass_one(Semantic *s,  Statements *st) {
             sym.declared_type = newtype;
             sym.is_extern = false; // @NOTE: maybe will support extern in the future
 
-            if (!define_symbol(s, sym)) {
+            Symbol *newsym = define_symbol(s, sym);
+            if (!newsym) {
                 Symbol *before_def = lookup_symbol(s, sym.name);
                 log_error(current->loc, "Redefinition of enum %s is not allowed.",
                           sym.name);
                 log_error(before_def->loc, "enum defined here.");
                 continue;
             }
+            current->resolved_symbol = newsym;
         } break;
         case STMT_STRUCT_DEF: {
             Symbol sym = {0};
@@ -48,13 +50,15 @@ bool semantic_check_pass_one(Semantic *s,  Statements *st) {
             sym.declared_type = newtype;
             sym.is_extern = false; // @NOTE: maybe will support extern in the future
 
-            if (!define_symbol(s, sym)) {
+            Symbol *newsym = define_symbol(s, sym);
+            if (!newsym) {
                 Symbol *before_def = lookup_symbol(s, sym.name);
                 log_error(current->loc, "Redefinition of struct %s is not allowed.",
                           sym.name);
                 log_error(before_def->loc, "struct defined here.");
                 continue;
             }
+            current->resolved_symbol = newsym;
         } break;
         case STMT_CONST: {
             Symbol sym = {0};
@@ -64,13 +68,15 @@ bool semantic_check_pass_one(Semantic *s,  Statements *st) {
             sym.is_extern = false; // @NOTE: const cannot be an extern
             sym.declared_type = current->as.const_stmt.type;
 
-            if (!define_symbol(s, sym)) {
+            Symbol *newsym = define_symbol(s, sym);
+            if (!newsym) {
                 Symbol *before_def = lookup_symbol(s, sym.name);
                 log_error(current->loc, "Redefinition of const variable %s is not allowed.",
                           sym.name);
                 log_error(before_def->loc, "const variable defined here.");
                 continue;
             }
+            current->resolved_symbol = newsym;
         } break;
         case STMT_LET: {
             Symbol sym = {0};
@@ -80,13 +86,15 @@ bool semantic_check_pass_one(Semantic *s,  Statements *st) {
             sym.is_extern = current->as.let.extern_symbol;
             sym.declared_type = current->as.let.type;
 
-            if (!define_symbol(s, sym)) {
+            Symbol *newsym = define_symbol(s, sym);
+            if (!newsym) {
                 Symbol *before_def = lookup_symbol(s, sym.name);
                 log_error(current->loc, "Redefinition of let variable %s is not allowed.",
                           sym.name);
                 log_error(before_def->loc, "let variable defined here.");
                 continue;
             }
+            current->resolved_symbol = newsym;
         } break;
         default: {} break;
         }
@@ -106,6 +114,16 @@ bool semantic_check_pass_two(Semantic *s, Statements *st) {
 
 bool semantic_check_pass_three(Semantic *s, Statements *st) {
     // @TODO: not yet implemented!
+    // * Compute type of every expression
+    // * Validate call argument types
+    // * Validate binary operator compatibility
+    // * Validate return statements
+    // * Insert implicit conversions (if any)
+    // * Validate pointer deref
+    // * Validate indexing types
+    // * check if a + true is invalid
+    // * validate return type
+    // * validate call with correct type and correct args len
     bool ok = true;
     return ok;
 }
@@ -194,6 +212,8 @@ static bool check_expr(Semantic *s, Expr *e) {
         if (!sym) {
             log_error(e->loc, "Undefined variable '%s'.", e->as.identifier);
             ok = false;
+        } else {
+            e->resolved_symbol = sym;
         }
         // @NOTE: once Expr grows a `symbol` field you can write:
         //   e->symbol = sym;
@@ -243,9 +263,12 @@ static bool check_expr(Semantic *s, Expr *e) {
             sym.declared_type = p->type;
             sym.loc = p->loc;
 
-            if (!define_symbol(s, sym)) {
+            Symbol *defined = define_symbol(s, sym);
+            if (!defined) {
                 log_error(e->loc, "Duplicate parameter name '%s'.", p->name);
                 ok = false;
+            } else {
+                p->resolved_symbol = defined;
             }
         }
 
@@ -295,11 +318,14 @@ static bool check_stmt(Semantic *s, Stmt *st) {
             sym.is_extern    = st->as.let.extern_symbol;
             sym.declared_type = st->as.let.type;
 
-            if (!define_symbol(s, sym)) {
+            Symbol *defined = define_symbol(s, sym);
+            if (!defined) {
                 Symbol *before_def = lookup_symbol(s, sym.name);
                 log_error(st->loc, "Redefinition of let variable %s is not allowed.", sym.name);
                 log_error(before_def->loc, "let variable defined here.");
                 ok = false;
+            } else {
+                st->resolved_symbol = defined;
             }
         }
     } break;
@@ -316,11 +342,14 @@ static bool check_stmt(Semantic *s, Stmt *st) {
             sym.kind         = SYM_CONST;
             sym.declared_type = st->as.const_stmt.type;
 
-            if (!define_symbol(s, sym)) {
+            Symbol *defined = define_symbol(s, sym);
+            if (!defined) {
                 Symbol *before_def = lookup_symbol(s, sym.name);
                 log_error(st->loc, "Redefinition of const variable %s is not allowed.", sym.name);
                 log_error(before_def->loc, "const variable defined here.");
                 ok = false;
+            } else {
+               st->resolved_symbol = defined;
             }
         }
     } break;
@@ -336,22 +365,25 @@ static bool check_stmt(Semantic *s, Stmt *st) {
         break;
 
     case STMT_FOR: {
-        // The for-loop gets its own scope so that the init variable (if any)
-        // is scoped to the loop.
         enter_scope(s);
-        ok  = check_stmt(s, st->as.for_stmt.init);      // can be NULL
-        ok &= check_expr(s, st->as.for_stmt.condition);  // can be NULL
-        ok &= check_expr(s, st->as.for_stmt.increment);  // can be NULL
+        st->as.for_stmt.created_scope = s->current_scope;
+
+        ok  = check_stmt(s, st->as.for_stmt.init);
+        ok &= check_expr(s, st->as.for_stmt.condition);
+        ok &= check_expr(s, st->as.for_stmt.increment);
         ok &= check_stmt(s, st->as.for_stmt.body);
+
         leave_scope(s);
     } break;
 
     case STMT_BLOCK: {
-        // A bare block gets its own scope.
         enter_scope(s);
+        st->as.block.created_scope = s->current_scope;
+
         for (size_t i = 0; i < st->as.block.statements.count; i++) {
             if (!check_stmt(s, st->as.block.statements.items[i])) ok = false;
         }
+
         leave_scope(s);
     } break;
 
@@ -395,7 +427,7 @@ void leave_scope(Semantic *s) {
     s->current_scope = s->current_scope->parent;
 }
 
-bool define_symbol(Semantic *s, Symbol symbol) {
+Symbol *define_symbol(Semantic *s, Symbol symbol) {
     Scope *scope = s->current_scope;
     // @NOTE: allow shadowing so if the symbol exist on the parent node then allow it!
     // @NOTE: i dont know if its the best idea but thats fine for now.
@@ -403,11 +435,11 @@ bool define_symbol(Semantic *s, Symbol symbol) {
     for (size_t i = 0; i < scope->symbols.count; i++) {
         Symbol current = scope->symbols.items[i];
         if (strcmp(symbol.name, current.name) == 0) {
-            return false;
+            return NULL;
         }
     }
     da_append(&scope->symbols, symbol);
-    return true;
+    return &da_last(&scope->symbols);
 }
 
 Symbol *lookup_symbol(Semantic *s, const char *name) {
@@ -423,3 +455,7 @@ Symbol *lookup_symbol(Semantic *s, const char *name) {
 
     return NULL;
 }
+
+
+static Type *typecheck_stmt(Semantic *s, Stmt *stmt);
+static Type *typecheck_expr(Semantic *s, Expr *expr);

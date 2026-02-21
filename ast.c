@@ -511,7 +511,6 @@ static Stmt *parse_enum(Parser *p, Token *btok) {
                 value->type == EXPR_FUNCTION ||
                 value->type == EXPR_CALL)
             {
-                // @TODO: make the error more prettier so stringify the value->kind
                 log_error(current->loc, "Enum value didnt support assignment, function definition, and function call expression type.");
                 return NULL;
             }
@@ -1033,7 +1032,7 @@ void print_stmt(Stmt *s, int indent) {
         break;
 
     case STMT_CONST:
-        printf("CONST %s\n", s->as.let.name);
+        printf("CONST %s\n", s->as.const_stmt.name);
         if (s->as.let.type) { print_type(s->as.const_stmt.type, indent + 1); }
         print_expr(s->as.const_stmt.value, indent + 1);
         break;

@@ -56,7 +56,7 @@ bool semantic_check_pass_three(Semantic *s, Statements *st);
 
 void enter_scope(Semantic *s);
 void leave_scope(Semantic *s);
-bool define_symbol(Semantic *s, Symbol symbol);
+Symbol *define_symbol(Semantic *s, Symbol symbol);
 Symbol *lookup_symbol(Semantic *s, const char *name);
 
 #endif /* SEMANTIC_H */

@@ -47,6 +47,7 @@ typedef struct {
     char *name;
     Type *type;
     SrcLoc loc;
+    void *resolved_symbol;
 } Param;
 
 typedef struct {
@@ -145,6 +146,7 @@ struct Type {
 struct Stmt {
     StmtType type;
     SrcLoc loc;
+    void *resolved_symbol; // save the symbol from pass 2 here
 
     union {
         // Expression statement
@@ -184,6 +186,7 @@ struct Stmt {
             Expr *condition; // can be NULL
             Expr *increment; // can be NULL
             Stmt *body;
+            void *created_scope; // save scope here
         } for_stmt;
 
         struct {
@@ -200,6 +203,7 @@ struct Stmt {
         // { ... }
         struct {
             Statements statements;
+            void *created_scope; // save scope here
         } block;
 
     } as;
@@ -208,6 +212,8 @@ struct Stmt {
 struct Expr {
     ExprType type;
     SrcLoc loc;
+    void *resolved_symbol; // save the symbol from pass 2 here
+    Type *resolved_type; // save the resolved type from pass 2 here
 
     union {
         // Literals
