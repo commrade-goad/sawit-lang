@@ -1,4 +1,5 @@
 #include "semantic.h"
+#include "ast.h"
 
 // TODO: Dereference, addres, sizeof, function args check, assignement with {}
 
@@ -201,6 +202,7 @@ static bool check_expr(Semantic *s, Expr *e) {
 
     switch (e->type) {
     // Leaves – nothing to validate
+    case EXPR_COMPOUND_LIT: // We cannot check shit at this state since the target of the compound is at the EXPR_ASSIGN
     case EXPR_LITERAL_INT:
     case EXPR_LITERAL_FLOAT:
     case EXPR_LITERAL_STRING:
@@ -215,9 +217,6 @@ static bool check_expr(Semantic *s, Expr *e) {
         } else {
             e->resolved_symbol = sym;
         }
-        // @NOTE: once Expr grows a `symbol` field you can write:
-        //   e->symbol = sym;
-        // here to complete the binding step.
     } break;
 
     case EXPR_UNARY_OP:

@@ -202,7 +202,31 @@ static Expr *parse_expression(Parser *p, int min_bp) {
     } break;
 
     // @TODO: Finish this assignment to struct (partial)
-    case T_OCPARENT: {} break;
+    // Expect: { stuff = yes, second = true, }
+    case T_OCPARENT: {
+        lhs = make_expr(EXPR_COMPOUND_LIT, p->arena);
+        lhs->loc = tok->loc;
+        while(!check(p, T_CCPARENT)) {
+            if (!check(p, T_IDENT)) break;
+            Token *target = advance(p);
+            EXPECT_EXIT(p, T_EQUAL);
+            Expr *value = parse_expression(p, 0);
+            if (!value) return NULL;
+
+            Expr *target_expr = make_expr(EXPR_IDENTIFIER, p->arena);
+            // @TODO: copy the string
+            target_expr->as.identifier = target->data.String;
+
+            Expr *new_assignment = make_expr(EXPR_ASSIGN, p->arena);
+            new_assignment->as.assign.target = target_expr;
+            new_assignment->as.assign.value = value;
+
+            da_append(&lhs->as.compound_literal.target, new_assignment);
+            if (check(p, T_COMMA)) advance(p);
+            else break;
+        }
+        EXPECT_EXIT(p, T_CCPARENT);
+    } break;
 
     case T_FN: {
         Token *before = peek(p);
@@ -730,6 +754,14 @@ void print_expr(Expr *e, int indent) {
     print_indent(indent);
 
     switch (e->type) {
+    case EXPR_COMPOUND_LIT:
+        printf("COMPOUND LIT {\n");
+        for (size_t i = 0; i < e->as.compound_literal.target.count; i++) {
+            print_expr(e->as.compound_literal.target.items[i], indent + 1);
+        }
+        print_indent(indent);
+        printf("}\n");
+        break;
     case EXPR_LITERAL_INT:
         printf("INT(%lu)\n", e->as.uint_val);
         break;
@@ -915,9 +947,14 @@ static void print_type(Type *t, int indent) {
     print_indent(indent);
 
     switch (t->kind) {
-    // @TODO: Not yet implemented
-    case TYPE_ENUM: break;
-    case TYPE_STRUCT: break;
+    case TYPE_ENUM: {
+        printf("ENUM\n");
+        // @NOTE: enum dont have type for now.
+    } break;
+    case TYPE_STRUCT: {
+        printf("STRUCT\n");
+        // @NOTE: this dont need to print other stuff since its handle by print_stmt.
+    } break;
     case TYPE_VARIADIC:
         printf("VARIADIC\n");
         print_type(t->as.variadic.var_type, indent + 1);

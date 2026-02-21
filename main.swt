@@ -13,6 +13,9 @@ struct Point = {
     y f32;
 };
 
+let point Point = { x = 20, y = 0, };
+point = { y = 30 };
+
 let metux = false;
 if (metux == false) {
     let sixth = 10;

@@ -18,6 +18,7 @@ typedef enum {
     EXPR_FUNCTION,
     EXPR_CALL,
     EXPR_INDEX,
+    EXPR_COMPOUND_LIT,
 } ExprType;
 
 typedef enum {
@@ -90,6 +91,12 @@ typedef struct {
     size_t current;
     Arena *arena;
 } Parser;
+
+typedef struct {
+    Expr **items;
+    size_t count;
+    size_t capacity;
+} ExprArr;
 
 typedef enum {
     TYPE_NAME,      // int, MyStruct, Foo
@@ -238,6 +245,10 @@ struct Expr {
             Expr *target;
             Expr *value;
         } assign;
+
+        struct {
+            ExprArr target;
+        } compound_literal;
 
         // function
         struct {
