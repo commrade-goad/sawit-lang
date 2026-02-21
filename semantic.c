@@ -1,5 +1,7 @@
 #include "semantic.h"
 
+// TODO: Dereference, addres, sizeof
+
 // Forward declarations for the recursive walkers
 static bool check_stmt(Semantic *s, Stmt *st);
 static bool check_expr(Semantic *s, Expr *e);
@@ -357,13 +359,21 @@ static bool check_stmt(Semantic *s, Stmt *st) {
         ok = check_stmt(s, st->as.defer.callback);
         break;
 
-    // @TODO:
-    // Enum/struct definitions are pure type declarations – their bodies don't
-    // contain expressions that need resolving yet.  If you later add default
-    // member values to structs, walk them here.
-    // now Struct and Enum already a type just do it later @TODO
-    case STMT_ENUM_DEF: {} break;
-    case STMT_STRUCT_DEF: {} break;
+    case STMT_ENUM_DEF: {
+        // Check if the expression inside is valid
+        EnumVariants *var = &st->as.enum_def.variants;
+        for (size_t i = 0; i < var->count; i++) {
+            if (!check_expr(s, var->items[i].value)) ok = false;
+        }
+    } break;
+    case STMT_STRUCT_DEF: {
+        // Check if the default value and the expr of default value is valid
+        Structure *member = &st->as.struct_def.members;
+        for (size_t i = 0; i < member->count; i++) {
+            if (!check_type(s, member->items[i].type))  ok = false;
+            if (!check_expr(s, member->items[i].value)) ok = false;
+        }
+    } break;
     }
 
     return ok;
