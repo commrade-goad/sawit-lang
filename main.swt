@@ -1,59 +1,59 @@
-let a = 10;
-{
-    let b = 5;
-    a = a + b;
-}
+let a s64 = 10;
+// {
+//     let b = 5;
+//     a = a + b;
+// }
 
-let add = fn (a s32, b s32) -> s32 {
-    return a + b;
-};
+// let add = fn (a s32, b s32) -> s32 {
+//     return a + b;
+// };
 
-struct Point = {
-    x f32;
-    y f32;
-};
+// struct Point = {
+//     x f32;
+//     y f32;
+// };
 
-let point Point = { x = 20, y = 0, };
-point = { y = 30 };
+// let point Point = { x = 20, y = 0, };
+// point = { y = 30 };
 
-let metux = false;
-if (metux == false) {
-    let sixth = 10;
-} else let sixth = 6;
+// let metux = false;
+// if (metux == false) {
+//     let sixth = 10;
+// } else let sixth = 6;
 
-enum Color = {
-    RED = 69;
-    GREEN;
-    BLUE;
-};
+// enum Color = {
+//     RED = 69;
+//     GREEN;
+//     BLUE;
+// };
 
-for (;;) return "a";
+// for (;;) return "a";
 
-// >> foreign
-// combine enum and struct since enum is just integer member of struct that is a const
+// // >> foreign
+// // combine enum and struct since enum is just integer member of struct that is a const
 
-// let b []u8 = "yes";
+// // let b []u8 = "yes";
 
-const IAM_A_CONST = b;
-// const IAM_A_CONST [5]u8 = b;
+// // const IAM_A_CONST = b;
+// // const IAM_A_CONST [5]u8 = b;
 
-// @NOTE: to mark a function extern to use using other C library
-// ... only allowed on extern
-let printf = extern fn (fmt *char, ...) -> s32 {};
-let second_printf = fn (fmt *char, arg ..s32) -> s32 {};
+// // @NOTE: to mark a function extern to use using other C library
+// // ... only allowed on extern
+// let printf = extern fn (fmt *char, ...) -> s32 {};
+// let second_printf = fn (fmt *char, arg ..s32) -> s32 {};
 
-stuff[20] = a;
+// // stuff[20] = a;
 
 
-// let x s32 = add(10, 12);
-y = 20;
+// // let x s32 = add(10, 12);
+// // y = 20;
 
-add(10, 20);
+// add(10, 20);
 
-{
-    let doing_something = 10;
-    defer add(10,20);
-    defer {
-         cleanup(); 
-    }
-}
+// {
+//     let doing_something = 10;
+//     defer add(10,20);
+//     defer {
+//          // cleanup(); 
+//     }
+// }

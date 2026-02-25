@@ -201,27 +201,14 @@ static Expr *parse_expression(Parser *p, int min_bp) {
         lhs->as.uint_val = 1;
     } break;
 
-    // @TODO: Finish this assignment to struct (partial)
     // Expect: { stuff = yes, second = true, }
     case T_OCPARENT: {
         lhs = make_expr(EXPR_COMPOUND_LIT, p->arena);
         lhs->loc = tok->loc;
         while(!check(p, T_CCPARENT)) {
             if (!check(p, T_IDENT)) break;
-            Token *target = advance(p);
-            EXPECT_EXIT(p, T_EQUAL);
-            Expr *value = parse_expression(p, 0);
-            if (!value) return NULL;
-
-            Expr *target_expr = make_expr(EXPR_IDENTIFIER, p->arena);
-            // @TODO: copy the string
-            target_expr->as.identifier = target->data.String;
-
-            Expr *new_assignment = make_expr(EXPR_ASSIGN, p->arena);
-            new_assignment->as.assign.target = target_expr;
-            new_assignment->as.assign.value = value;
-
-            da_append(&lhs->as.compound_literal.target, new_assignment);
+            Expr *target = parse_expression(p, 0);
+            da_append(&lhs->as.compound_literal.target, target);
             if (check(p, T_COMMA)) advance(p);
             else break;
         }

@@ -1,12 +1,18 @@
 #include "semantic.h"
 #include "ast.h"
 
-// TODO: Dereference, addres, sizeof, function args check, assignement with {}
+// TODO: Dereference, addres, sizeof, function args check
 
 // Forward declarations for the recursive walkers
 static bool check_stmt(Semantic *s, Stmt *st);
 static bool check_expr(Semantic *s, Expr *e);
 static bool check_type(Semantic *s, Type *t);
+
+
+// Forward declare for the pass three
+static Type *typecheck_stmt(Semantic *s, Stmt *stmt);
+static Type *typecheck_expr(Semantic *s, Expr *expr);
+static bool type_equals(Type *a, Type *b);
 
 bool semantic_check_pass_one(Semantic *s,  Statements *st) {
     enter_scope(s);
@@ -126,6 +132,11 @@ bool semantic_check_pass_three(Semantic *s, Statements *st) {
     // * validate return type
     // * validate call with correct type and correct args len
     bool ok = true;
+    for (size_t i = 0; i < st->count; i++) {
+        if (!typecheck_stmt(s, st->items[i])) {
+            ok = false;
+        }
+    }
     return ok;
 }
 
@@ -410,6 +421,68 @@ static bool check_stmt(Semantic *s, Stmt *st) {
     return ok;
 }
 
+static Type *typecheck_stmt(Semantic *s, Stmt *stmt) {
+    switch (stmt->type) {
+    case STMT_LET: {
+        // @TODO: Resolve the type if its not typed on the let statement
+        // @TODO: Check the type and check the expr type
+        Symbol *sym = stmt->resolved_symbol;
+        Type *rhs_type = typecheck_expr(s, stmt->as.let.value);
+
+        if (!sym) return NULL;
+        if(!rhs_type) return NULL;
+
+        if (!sym->declared_type) {
+            sym->declared_type = rhs_type;
+            return rhs_type;
+        } else {
+            // @TODO: do range check if the type is annotated and the input is not the same or if its overflown then error out.
+            if (!type_equals(sym->declared_type, rhs_type)) {
+                // @TODO: need to have a function to get the string from the type
+                log_error(stmt->loc, "Incompatible type on let statement `%s` and `%s`", "IDK", "IDK");
+                return NULL;
+            }
+            return sym->declared_type;
+        }
+    } break;
+    default: break;
+    }
+    return NULL;
+}
+
+static Type *typecheck_expr(Semantic *s, Expr *expr) {
+    switch (expr->type) {
+    case EXPR_LITERAL_INT: {
+        Type *newtype = make_type(s->arena, TYPE_NAME);
+        newtype->loc = expr->loc;
+        // @NOTE: the default type for number is s32 like usually on C
+        newtype->as.named.name = "s32"; // @TODO: i dont like this method change it in the future
+        return newtype;
+    } break;
+    default: break;
+    }
+    return NULL;
+}
+
+// @TODO: Check if type can be promoted if can then acc.
+// [let] s64 = s32 <-- can promote the rhs to be s64
+static bool type_can_be_promoted(Type *origin, Type *other) {
+    return false;
+}
+
+static bool type_equals(Type *a, Type *b) {
+    if (a->kind != b->kind) return false;
+
+    switch (a->kind) {
+    case TYPE_NAME:
+        return strcmp(a->as.named.name, b->as.named.name) == 0;
+    // @TODO: add more check on diff type
+
+    default:
+        return a == b; // fallback for now
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Scope helpers
 // ---------------------------------------------------------------------------
@@ -454,7 +527,3 @@ Symbol *lookup_symbol(Semantic *s, const char *name) {
 
     return NULL;
 }
-
-
-static Type *typecheck_stmt(Semantic *s, Stmt *stmt);
-static Type *typecheck_expr(Semantic *s, Expr *expr);
