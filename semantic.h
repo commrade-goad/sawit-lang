@@ -10,14 +10,6 @@
 
 typedef struct Type Type;
 
-#define KNOWN_DEFAULT_TYPE_LEN 14
-static const char *KNOWN_DEFAULT_TYPE[] = {
-    "s8", "s16", "s32", "s64",
-    "u8", "u16", "u32", "u64",
-    "f32", "f64",
-    "bool", "char", "null", "VARIADIC"
-};
-
 typedef enum {
     SYM_VAR,
     SYM_CONST,

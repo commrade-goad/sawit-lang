@@ -1,6 +1,8 @@
 #include "ast.h"
 #include "lexer.h"
 
+//@TODO: support the casting keyword on the expr
+
 #define BIGGEST_POWER 40
 
 #define EXPECT_EXIT(p, toktype) \
@@ -238,7 +240,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
                     param.name = "_";
                     param.type = make_type(p->arena, TYPE_CVARIADIC);
                     param.type->loc = name->loc;
-                    param.type->as.base = TVARIADIC;
+                    param.type->as.base.kind = TVARIADIC;
                     param.loc = peek(p)->loc;
                 } else {
                     param.name = name->data.String;
@@ -913,7 +915,8 @@ static Type *parse_type(Parser *p) {
 
         Type *t = make_type(p->arena, TYPE_BASE);
         t->loc = tok->loc;
-        t->as.base = str_to_basetypekind(tok->data.String);
+        t->as.base.kind = str_to_basetypekind(tok->data.String);
+        t->as.base.name = tok->data.String;
         return t;
     }
 
@@ -950,7 +953,7 @@ static void print_type(Type *t, int indent) {
         printf("C STYLE VARIADIC\n");
     } break;
     case TYPE_BASE:
-        printf("TYPE(%s)\n", get_basetypekind_str(t->as.base));
+        printf("TYPE(%s)\n", get_basetypekind_str(t->as.base.kind));
         break;
 
     case TYPE_POINTER:
@@ -1105,7 +1108,7 @@ const char *get_basetypekind_str(BaseTypeKind type) {
         case TF64:      { return "f64";      }
         case TBOOL:     { return "bool";     }
         case TCHAR:     { return "char";     }
-        case TNULL:     { return "null";     }
+        case TANY:      { return "any";      }
         case TVARIADIC: { return "variadic"; }
         default: break;
     }
@@ -1125,7 +1128,17 @@ BaseTypeKind str_to_basetypekind(const char *name) {
     else if (strcmp(name, "f64")      == 0) { return TF64;      }
     else if (strcmp(name, "bool")     == 0) { return TBOOL;     }
     else if (strcmp(name, "char")     == 0) { return TCHAR;     }
-    else if (strcmp(name, "null")     == 0) { return TNULL;     }
+    else if (strcmp(name, "any")      == 0) { return TANY;      }
     else if (strcmp(name, "variadic") == 0) { return TVARIADIC; }
     return TLAST;
+}
+
+// @TODO: add another type support
+const char *get_type_string(Type *t) {
+    switch (t->kind) {
+        case TYPE_BASE:
+            return get_basetypekind_str(t->as.base.kind);
+        default: break;
+    }
+    return NULL;
 }

@@ -122,20 +122,25 @@ typedef enum {
     TF64,
     TBOOL,
     TCHAR,
-    TNULL,
+    TANY,
     TVARIADIC,
+    TCVARIADIC,
     TLAST, // for count and not found
 } BaseTypeKind;
 
 const char *get_basetypekind_str(BaseTypeKind type);
 BaseTypeKind str_to_basetypekind(const char *name);
+const char *get_type_string(Type *t);
 
 struct Type {
     TypeKind kind;
     SrcLoc loc;
 
     union {
-        BaseTypeKind base;
+        struct {
+            const char *name; // for printing purpose
+            BaseTypeKind kind;
+        } base;
     
         // *T
         struct {

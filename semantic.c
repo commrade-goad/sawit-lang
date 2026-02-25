@@ -13,6 +13,8 @@ static bool check_type(Semantic *s, Type *t);
 static Type *typecheck_stmt(Semantic *s, Stmt *stmt);
 static Type *typecheck_expr(Semantic *s, Expr *expr);
 static bool type_equals(Type *a, Type *b);
+static bool type_can_be_promoted(Type *b, Type *a);
+static bool convert_type(Type *b, Type *a);
 
 bool semantic_check_pass_one(Semantic *s,  Statements *st) {
     enter_scope(s);
@@ -161,22 +163,17 @@ static bool check_type(Semantic *s, Type *t) {
     case TYPE_ENUM:
     case TYPE_STRUCT:
     case TYPE_BASE: {
-        Symbol *sym = lookup_symbol(s, get_basetypekind_str(t->as.base));
+        Symbol *sym = lookup_symbol(s, get_basetypekind_str(t->as.base.kind));
         if (!sym) {
-            bool found = false;
-            for (size_t i = 0; i < KNOWN_DEFAULT_TYPE_LEN; i++) {
-                if (strcmp(KNOWN_DEFAULT_TYPE[i], get_basetypekind_str(t->as.base)) == 0) {
-                    found = true;
-                }
-            }
-            if (!found) {
-                log_error(t->loc, "Unknown type '%s'.", get_basetypekind_str(t->as.base));
+            const char *res = get_basetypekind_str(t->as.base.kind);
+            if (!res) {
+                log_error(t->loc, "Unknown type '%s'.", t->as.base.name);
                 return false;
             }
             return true;
         }
         if (sym->kind != SYM_TYPE) {
-            log_error(t->loc, "'%s' is not a type.", get_basetypekind_str(t->as.base));
+            log_error(t->loc, "'%s' is not a type.", get_basetypekind_str(t->as.base.kind));
             return false;
         }
     } break;
@@ -438,9 +435,12 @@ static Type *typecheck_stmt(Semantic *s, Stmt *stmt) {
         } else {
             // @TODO: do range check if the type is annotated and the input is not the same or if its overflown then error out.
             if (!type_equals(sym->declared_type, rhs_type)) {
-                // @TODO: need to have a function to get the string from the type
-                log_error(stmt->loc, "Incompatible type on let statement `%s` and `%s`", "IDK", "IDK");
-                return NULL;
+                if (!type_can_be_promoted(sym->declared_type, rhs_type)) {
+                    log_error(stmt->loc, "Incompatible type on let statement `%s` and `%s`", get_type_string(sym->declared_type), get_type_string(rhs_type));
+                    return NULL;
+                }
+                // @TODO: check range here (turn rhs to lhs type)
+                if (!convert_type(sym->declared_type, rhs_type)) {}
             }
             return sym->declared_type;
         }
@@ -456,7 +456,8 @@ static Type *typecheck_expr(Semantic *s, Expr *expr) {
         Type *newtype = make_type(s->arena, TYPE_BASE);
         newtype->loc = expr->loc;
         // @NOTE: the default type for number is s32 like usually on C
-        newtype->as.base = TS32;
+        newtype->as.base.kind = TS32;
+        newtype->as.base.name = get_basetypekind_str(newtype->as.base.kind);
         return newtype;
     } break;
     default: break;
@@ -466,7 +467,28 @@ static Type *typecheck_expr(Semantic *s, Expr *expr) {
 
 // @TODO: Check if type can be promoted if can then acc.
 // [let] s64 = s32 <-- can promote the rhs to be s64
-static bool type_can_be_promoted(Type *origin, Type *other) {
+static bool type_can_be_promoted(Type *a, Type *b) {
+    switch (a->kind) {
+        case TYPE_BASE: {
+            if (b->kind != TYPE_BASE && a->as.base.kind > b->as.base.kind)
+                    return false;
+
+            // @TODO: check bool, char, null, variadic, cvariadic
+            if ((a->as.base.kind <= TS64 && a->as.base.kind >= TS8) ||
+                (a->as.base.kind <= TU64 && a->as.base.kind >= TU8) ||
+                (a->as.base.kind <= TF64 && a->as.base.kind >= TF32)
+                )
+            {
+                return true;
+            }
+        } break;
+        default: break;
+    }
+    return false;
+}
+
+// @TODO: Implement this
+static bool convert_type(Type *b, Type *a) {
     return false;
 }
 
@@ -475,7 +497,7 @@ static bool type_equals(Type *a, Type *b) {
 
     switch (a->kind) {
     case TYPE_BASE:
-        return a->as.base == b->as.base;
+        return a->as.base.kind == b->as.base.kind;
     // @TODO: add more check on diff type
 
     default:
