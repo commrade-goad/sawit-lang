@@ -238,7 +238,7 @@ static Expr *parse_expression(Parser *p, int min_bp) {
                     param.name = "_";
                     param.type = make_type(p->arena, TYPE_CVARIADIC);
                     param.type->loc = name->loc;
-                    param.type->as.named.name = "VARIADIC";
+                    param.type->as.base = TVARIADIC;
                     param.loc = peek(p)->loc;
                 } else {
                     param.name = name->data.String;
@@ -911,9 +911,9 @@ static Type *parse_type(Parser *p) {
         // ---------- NORMAL NAMED TYPE ----------
         advance(p);
 
-        Type *t = make_type(p->arena, TYPE_NAME);
+        Type *t = make_type(p->arena, TYPE_BASE);
         t->loc = tok->loc;
-        t->as.named.name = tok->data.String;
+        t->as.base = str_to_basetypekind(tok->data.String);
         return t;
     }
 
@@ -949,8 +949,8 @@ static void print_type(Type *t, int indent) {
     case TYPE_CVARIADIC: {
         printf("C STYLE VARIADIC\n");
     } break;
-    case TYPE_NAME:
-        printf("TYPE(%s)\n", t->as.named.name);
+    case TYPE_BASE:
+        printf("TYPE(%s)\n", get_basetypekind_str(t->as.base));
         break;
 
     case TYPE_POINTER:
@@ -1089,4 +1089,43 @@ bool make_ast(Arena *a, Statements *stmts, Tokens *t) {
         da_append(stmts, stmt);
     }
     return true;
+}
+
+const char *get_basetypekind_str(BaseTypeKind type) {
+    switch (type) {
+        case TS8:       { return "s8";       }
+        case TS16:      { return "s16";      }
+        case TS32:      { return "s32";      }
+        case TS64:      { return "s64";      }
+        case TU8:       { return "u8";       }
+        case TU16:      { return "u16";      }
+        case TU32:      { return "u32";      }
+        case TU64:      { return "u64";      }
+        case TF32:      { return "f32";      }
+        case TF64:      { return "f64";      }
+        case TBOOL:     { return "bool";     }
+        case TCHAR:     { return "char";     }
+        case TNULL:     { return "null";     }
+        case TVARIADIC: { return "variadic"; }
+        default: break;
+    }
+    return NULL;
+}
+
+BaseTypeKind str_to_basetypekind(const char *name) {
+    if      (strcmp(name, "s8")       == 0) { return TS8;       }
+    else if (strcmp(name, "s16")      == 0) { return TS16;      }
+    else if (strcmp(name, "s32")      == 0) { return TS32;      }
+    else if (strcmp(name, "s64")      == 0) { return TS64;      }
+    else if (strcmp(name, "u8")       == 0) { return TU8;       }
+    else if (strcmp(name, "u16")      == 0) { return TU16;      }
+    else if (strcmp(name, "u32")      == 0) { return TU32;      }
+    else if (strcmp(name, "u64")      == 0) { return TU64;      }
+    else if (strcmp(name, "f32")      == 0) { return TF32;      }
+    else if (strcmp(name, "f64")      == 0) { return TF64;      }
+    else if (strcmp(name, "bool")     == 0) { return TBOOL;     }
+    else if (strcmp(name, "char")     == 0) { return TCHAR;     }
+    else if (strcmp(name, "null")     == 0) { return TNULL;     }
+    else if (strcmp(name, "variadic") == 0) { return TVARIADIC; }
+    return TLAST;
 }

@@ -160,23 +160,23 @@ static bool check_type(Semantic *s, Type *t) {
     } break;
     case TYPE_ENUM:
     case TYPE_STRUCT:
-    case TYPE_NAME: {
-        Symbol *sym = lookup_symbol(s, t->as.named.name);
+    case TYPE_BASE: {
+        Symbol *sym = lookup_symbol(s, get_basetypekind_str(t->as.base));
         if (!sym) {
             bool found = false;
             for (size_t i = 0; i < KNOWN_DEFAULT_TYPE_LEN; i++) {
-                if (strcmp(KNOWN_DEFAULT_TYPE[i], t->as.named.name) == 0) {
+                if (strcmp(KNOWN_DEFAULT_TYPE[i], get_basetypekind_str(t->as.base)) == 0) {
                     found = true;
                 }
             }
             if (!found) {
-                log_error(t->loc, "Unknown type '%s'.", t->as.named.name);
+                log_error(t->loc, "Unknown type '%s'.", get_basetypekind_str(t->as.base));
                 return false;
             }
             return true;
         }
         if (sym->kind != SYM_TYPE) {
-            log_error(t->loc, "'%s' is not a type.", t->as.named.name);
+            log_error(t->loc, "'%s' is not a type.", get_basetypekind_str(t->as.base));
             return false;
         }
     } break;
@@ -453,10 +453,10 @@ static Type *typecheck_stmt(Semantic *s, Stmt *stmt) {
 static Type *typecheck_expr(Semantic *s, Expr *expr) {
     switch (expr->type) {
     case EXPR_LITERAL_INT: {
-        Type *newtype = make_type(s->arena, TYPE_NAME);
+        Type *newtype = make_type(s->arena, TYPE_BASE);
         newtype->loc = expr->loc;
         // @NOTE: the default type for number is s32 like usually on C
-        newtype->as.named.name = "s32"; // @TODO: i dont like this method change it in the future
+        newtype->as.base = TS32;
         return newtype;
     } break;
     default: break;
@@ -474,8 +474,8 @@ static bool type_equals(Type *a, Type *b) {
     if (a->kind != b->kind) return false;
 
     switch (a->kind) {
-    case TYPE_NAME:
-        return strcmp(a->as.named.name, b->as.named.name) == 0;
+    case TYPE_BASE:
+        return a->as.base == b->as.base;
     // @TODO: add more check on diff type
 
     default:

@@ -99,7 +99,7 @@ typedef struct {
 } ExprArr;
 
 typedef enum {
-    TYPE_NAME,      // int, MyStruct, Foo
+    TYPE_BASE,      // s32, s64, etc
     TYPE_POINTER,   // *T
     TYPE_ARRAY,     // T[]
     TYPE_FUNCTION,  // fn(T1, T2) -> T3
@@ -109,16 +109,34 @@ typedef enum {
     TYPE_CVARIADIC,
 } TypeKind;
 
+typedef enum {
+    TS8,
+    TS16,
+    TS32,
+    TS64,
+    TU8,
+    TU16,
+    TU32,
+    TU64,
+    TF32,
+    TF64,
+    TBOOL,
+    TCHAR,
+    TNULL,
+    TVARIADIC,
+    TLAST, // for count and not found
+} BaseTypeKind;
+
+const char *get_basetypekind_str(BaseTypeKind type);
+BaseTypeKind str_to_basetypekind(const char *name);
+
 struct Type {
     TypeKind kind;
     SrcLoc loc;
 
     union {
-        // int, MyStruct
-        struct {
-            char *name;
-        } named;
-
+        BaseTypeKind base;
+    
         // *T
         struct {
             Type *base;
